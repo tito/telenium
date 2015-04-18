@@ -1,0 +1,10 @@
+.coverage
+.noseids
+*.so
+*.pyc
+*.pyo
+*.py#
+*~
+*.swp
+*.DS_Store
+*.kpf
