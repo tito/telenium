@@ -1,7 +1,9 @@
+# coding=utf-8
+
 import re
 import json
 
-### Selectors
+
 class Selector(object):
     def __init__(self, **kwargs):
         super(Selector, self).__init__()
@@ -36,6 +38,7 @@ class SequenceSelector(Selector):
 
 class AllClassSelector(Selector):
     classname = None
+
     def filter(self, root, items):
         if not items:
             items = [self.root]
@@ -50,6 +53,7 @@ class AllClassSelector(Selector):
 
 class ChildrenClassSelector(Selector):
     classname = None
+
     def filter(self, root, items):
         items = list(items)
         for item in items:
@@ -63,6 +67,7 @@ class ChildrenClassSelector(Selector):
 
 class IndexSelector(Selector):
     index = None
+
     def filter(self, root, items):
         try:
             for index, item in enumerate(items):
@@ -78,6 +83,7 @@ class IndexSelector(Selector):
 
 class AttrExistSelector(Selector):
     attr = None
+
     def filter(self, root, items):
         for item in items:
             if hasattr(item, self.attr):
@@ -91,6 +97,7 @@ class AttrOpSelector(Selector):
     attr = None
     op = None
     value = None
+
     def filter(self, root, items):
         op = self.op
         attr = self.attr
@@ -105,11 +112,13 @@ class AttrOpSelector(Selector):
                 yield item
             elif op == "~=" and value in value_item:
                 yield item
-
+            elif op == "!~=" and value not in value_item:
+                yield item
 
     def __repr__(self):
-        return "AttrOp(attr={}, op={}, value={})".format(
-            self.attr, self.op, self.value)
+        return "AttrOp(attr={}, op={}, value={})".format(self.attr, self.op,
+                                                         self.value)
+
 
 class XpathParser(object):
     WORD = re.compile("^(\w+)")
@@ -146,15 +155,14 @@ class XpathParser(object):
                     for item in expr[1:index_nbr].split(","):
                         item_selector = self.parse_attr(item)
                         if selector:
-                            selector = SequenceSelector(
-                                first=selector, second=item_selector)
+                            selector = SequenceSelector(first=selector,
+                                                        second=item_selector)
                         else:
                             selector = item_selector
                 expr = expr[index_nbr + 1:]
 
             else:
                 raise Exception("Left over during parsing: {}".format(expr))
-
 
             if selector:
                 if not root:
@@ -173,7 +181,7 @@ class XpathParser(object):
             raise Exception("Invalid syntax at {}".format(expr))
 
     def parse_attr_op(self, expr):
-        info = re.split(r"(=|!=|~=)", expr, 1)
+        info = re.split(r"(=|!=|~=|!~=)", expr, 1)
         attr = info[0][1:]
         if len(info) == 1:
             return AttrExistSelector(attr=attr)
@@ -199,7 +207,7 @@ BoxLayout:
     """)
     parser = XpathParser()
     print parser.parse("//BoxLayout/TextInput").execute(root)
-    print parser.parse("//TextInput[2]").execute(root)
+    print parser.parse("//TextInput").execute(root)
     p = parser.parse("//BoxLayout/Button[@text=\"World\"]")
     print p
     print p.execute(root)
