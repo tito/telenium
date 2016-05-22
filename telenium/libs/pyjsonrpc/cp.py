@@ -7,17 +7,28 @@ http://www.cherrypy.org/
 http://cherrypy.readthedocs.org/
 """
 
+import os
 import httplib
 import rpclib
 import rpcrequest
 import cherrypy
 import rpcjson
+import rpcerror
+import tools
+
 # ToDo: Replace compress and decompress with faster methods
-from cherrypy.lib.encoding import compress, decompress
+from cherrypy.lib.encoding import compress
+
+
+# Recognize Google App Engine
+if "APPENGINE_RUNTIME" in os.environ:
+    google_app_engine = True
+else:
+    google_app_engine = False
+
 
 # for simpler usage
 rpcmethod = rpclib.rpcmethod
-
 
 
 def _no_body_processor_tool():
@@ -72,11 +83,16 @@ class CherryPyJsonRpc(rpclib.JsonRpc):
             request_dict["id"] = id
             request_json = rpcjson.dumps(request_dict)
         else:
+            content_length = int(cherrypy.request.headers.get("Content-Length", 0))
             # POST
-            if "gzip" in cherrypy.request.headers.get("Content-Encoding", ""):
-                request_json = decompress(cherrypy.request.body.read())
+            if (
+                ("gzip" in cherrypy.request.headers.get("Content-Encoding", "")) and
+                not google_app_engine
+            ):
+                spooled_file = tools.SpooledFile(source_file = cherrypy.request.body)
+                request_json = tools.gunzip_file(spooled_file)
             else:
-                request_json = cherrypy.request.body.read()
+                request_json = cherrypy.request.body.read(content_length)
 
         # Call method
         result_string = self.call(request_json) or ""
@@ -85,11 +101,13 @@ class CherryPyJsonRpc(rpclib.JsonRpc):
         cherrypy.response.headers["Cache-Control"] = "no-cache"
         cherrypy.response.headers["Pragma"] = "no-cache"
         cherrypy.response.headers["Content-Type"] = "application/json"
-        if "gzip" in cherrypy.request.headers.get("Accept-Encoding", ""):
+        if (
+            ("gzip" in cherrypy.request.headers.get("Accept-Encoding", "")) and
+            not google_app_engine
+        ):
             # Gzip-compressed
             cherrypy.response.headers["Content-Encoding"] = "gzip"
             return compress(result_string, compress_level = 5)
         else:
             # uncompressed
             return result_string
-

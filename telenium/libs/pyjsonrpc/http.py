@@ -14,11 +14,14 @@ import urlparse
 import gzip
 import tempfile
 import Cookie
+import logging
 import rpcrequest
 import rpcresponse
 import rpcerror
 import rpclib
 import rpcjson
+import tools
+
 
 # Workaround for Google App Engine
 if "APPENGINE_RUNTIME" in os.environ:
@@ -42,7 +45,9 @@ def http_request(
     additional_headers = None,
     content_type = None,
     cookies = None,
-    gzipped = None
+    gzipped = None,
+    ssl_context = None,
+    debug = None
 ):
     """
     Fetch data from webserver (POST request)
@@ -66,15 +71,25 @@ def http_request(
         Unicode is not allowed here.
 
     :param gzipped: If `True`, the JSON-String will be gzip-compressed.
+
+    :param ssl_context: Specifies custom TLS/SSL settings for connection.
+        Python > 2.7.9
+        See: https://docs.python.org/2/library/ssl.html#client-side-operation
+
+    :param debug: If `True` --> *logging.debug*
     """
+
+    # Debug
+    if debug:
+        logging.debug(u"Client-->Server: {json_string}".format(json_string = repr(json_string)))
 
     # Create request and add data
     request = urllib2.Request(url)
 
     if gzipped:
         # Compress content (SpooledTemporaryFile to reduce memory usage)
-        spooled_file = _SpooledFile()
-        _gzip_str_to_file(json_string, spooled_file)
+        spooled_file = tools.SpooledFile()
+        tools.gzip_str_to_file(json_string, spooled_file)
         del json_string
         request.add_header("Content-Encoding", "gzip")
         request.add_header("Accept-Encoding", "gzip")
@@ -88,8 +103,8 @@ def http_request(
 
     # Authorization
     if username:
-        base64string = base64.encodestring("%s:%s" % (username, password))[:-1]
-        request.add_header("Authorization", "Basic %s" % base64string)
+        base64string = base64.b64encode("%s:%s" % (username, password)).strip()
+        request.add_unredirected_header("Authorization", "Basic %s" % base64string)
 
     # Cookies
     if cookies:
@@ -102,14 +117,33 @@ def http_request(
             request.add_header(key, val)
 
     # Send request to server
-    response = urllib2.urlopen(request, timeout = timeout)
+    if ssl_context:
+        try:
+            response = urllib2.urlopen(
+                request, timeout = timeout, context = ssl_context
+            )
+        except TypeError as err:
+            if u"context" in unicode(err):
+                raise NotImplementedError(u"SSL-Context needs Python >= 2.7.9")
+            else:
+                raise
+    else:
+        response = urllib2.urlopen(request, timeout = timeout)
 
     # Analyze response and return result
     try:
         if "gzip" in response.headers.get("Content-Encoding", ""):
-            response_file = _SpooledFile(source_file = response)
-            return _gunzip_file(response_file)
+            response_file = tools.SpooledFile(source_file = response)
+            if debug:
+                retval = tools.gunzip_file(response_file)
+                logging.debug(u"Client<--Server: {retval}".format(retval = repr(retval)))
+                return retval
+            return tools.gunzip_file(response_file)
         else:
+            if debug:
+                retval = response.read()
+                logging.debug(u"Client<--Server: {retval}".format(retval = repr(retval)))
+                return retval
             return response.read()
     finally:
         response.close()
@@ -137,7 +171,9 @@ class HttpClient(object):
         additional_headers = None,
         content_type = None,
         cookies = None,
-        gzipped = None
+        gzipped = None,
+        ssl_context = None,
+        debug = None
     ):
         """
         :param: URL to the JSON-RPC handler on the HTTP-Server.
@@ -161,6 +197,12 @@ class HttpClient(object):
             Unicode is not allowed here.
 
         :param gzipped: If `True`, the JSON-String will gzip-compressed.
+
+        :param ssl_context:  Specifies custom TLS/SSL settings for connection.
+            Python >= 2.7.9
+            See: https://docs.python.org/2/library/ssl.html#client-side-operation
+
+        :param debug: If `True` --> *logging.debug*
         """
 
         self.url = url
@@ -171,6 +213,8 @@ class HttpClient(object):
         self.content_type = content_type
         self.cookies = cookies
         self.gzipped = gzipped
+        self.ssl_context = ssl_context
+        self.debug = debug
 
 
     def call(self, method, *args, **kwargs):
@@ -204,7 +248,9 @@ class HttpClient(object):
             additional_headers = self.additional_headers,
             content_type = self.content_type,
             cookies = self.cookies,
-            gzipped = self.gzipped
+            gzipped = self.gzipped,
+            ssl_context = self.ssl_context,
+            debug = self.debug
         )
         if not response_json:
             return
@@ -242,15 +288,17 @@ class HttpClient(object):
 
         methods = []
 
-        # Create JSON-RPC-request
+        # Create JSON-RPC-request (without ID)
         if isinstance(method, basestring):
             request_dict = rpcrequest.create_request_dict(method, *args, **kwargs)
-            request_dict["id"] = None
+            del request_dict["id"]
             methods.append(request_dict)
         else:
             assert not args and not kwargs
             for request_dict in method:
-                request_dict["id"] = None
+                for delkey in ["id", "ID", "Id"]:
+                    if delkey in request_dict:
+                        del request_dict[delkey]
                 methods.append(request_dict)
 
         # Redirect to call-method
@@ -411,9 +459,9 @@ class HttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler, rpclib.JsonRpc):
         content_encoding = self.headers.get("Content-Encoding", "")
         accept_encoding = self.headers.get("Accept-Encoding", "")
 
-        if "gzip" in content_encoding:
+        if "gzip" in content_encoding and not google_app_engine:
             # Decompress
-            with _SpooledFile() as gzipped_file:
+            with tools.SpooledFile() as gzipped_file:
                 # ToDo: read chunks
                 # if content_length <= CHUNK_SIZE:
                 #     gzipped_file.write(self.rfile.read(content_length))
@@ -423,7 +471,7 @@ class HttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler, rpclib.JsonRpc):
                 gzipped_file.write(self.rfile.read(content_length))
                 gzipped_file.seek(0)
                 with gzip.GzipFile(
-                    filename = "", mode = "r", fileobj = gzipped_file
+                    filename = "", mode = "rb", fileobj = gzipped_file
                 ) as gz:
                     request_json = gz.read()
         else:
@@ -439,8 +487,8 @@ class HttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler, rpclib.JsonRpc):
 
         if "gzip" in accept_encoding:
             # Gzipped
-            content = _SpooledFile()
-            with gzip.GzipFile(filename = "", mode = "w", fileobj = content) as gz:
+            content = tools.SpooledFile()
+            with gzip.GzipFile(filename = "", mode = "wb", fileobj = content) as gz:
                 gz.write(response_json)
             content.seek(0)
 
@@ -509,51 +557,5 @@ def handle_cgi_request(methods = None):
     # Return result
     print response_json
 
-
-def _gzip_str_to_file(raw_text, dest_file):
-    with gzip.GzipFile(filename = "", fileobj = dest_file) as gz:
-        gz.write(raw_text)
-
-
-def _gunzip_file(source_file):
-    with gzip.GzipFile(filename = "", mode = "r", fileobj = source_file) as gz:
-        return gz.read()
-
-
-class _SpooledFile(TmpFile):
-    """
-    Spooled temporary file.
-
-    StringIO with fallback to temporary file if size > MAX_SIZE_IN_MEMORY.
-    """
-
-
-    def __init__(
-        self,
-        max_size = MAX_SIZE_IN_MEMORY,
-        mode = "w+b",
-        source_file = None,
-        *args, **kwargs
-    ):
-
-        # Init
-        if google_app_engine:
-            TmpFile.__init__(self, mode = mode)
-        else:
-            TmpFile.__init__(self, max_size = max_size, mode = mode)
-
-        if source_file:
-            for chunk in iter(lambda: source_file.read(CHUNK_SIZE), ""):
-                self.write(chunk)
-            self.seek(0)
-
-
-    def __len__(self):
-        current_pos = self.tell()
-        try:
-            self.seek(0, 2)
-            return self.tell()
-        finally:
-            self.seek(current_pos)
 
 

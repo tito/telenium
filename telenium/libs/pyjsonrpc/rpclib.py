@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-import sys
-import traceback
+import logging
 import rpcrequest
 import rpcresponse
 import rpcerror
 import rpcjson
+from tools import safe_unicode
 
 
 def rpcmethod(func):
@@ -85,13 +85,21 @@ class JsonRpc(object):
 
             if method not in self.methods:
                 # Method not found error
+                error = rpcerror.MethodNotFound(
+                    data = u"Method name: '%s'" % method
+                )
                 responses.append(
                     rpcresponse.Response(
                         jsonrpc = jsonrpc,
                         id = id,
-                        error = rpcerror.MethodNotFound(
-                            data = u"Method name: '%s'" % method
-                        )
+                        error = error
+                    )
+                )
+                # Logging error
+                logging.error(
+                    u"{error} -- {data}".format(
+                        error = safe_unicode(error),
+                        data = safe_unicode(error.data)
                     )
                 )
 
@@ -104,42 +112,44 @@ class JsonRpc(object):
             try:
                 rpc_function = self.methods[method]
                 result = rpc_function(*positional_params, **named_params)
-                # No return value is OK if we don´t have an ID (=notification)
-                if result is None:
-                    if id:
-                        responses.append(
-                            rpcresponse.Response(
-                                jsonrpc = jsonrpc,
-                                id = id,
-                                error = rpcerror.InternalError(
-                                    data = u"No result from JSON-RPC method."
-                                )
-                            )
-                        )
-                else:
-                    # Successful response
-                    responses.append(
-                        rpcresponse.Response(jsonrpc = jsonrpc, id = id, result = result)
-                    )
-            except TypeError, err:
-                traceback_info = "".join(traceback.format_exception(*sys.exc_info()))
-                if "takes exactly" in unicode(err) and "arguments" in unicode(err):
+                responses.append(
+                    rpcresponse.Response(jsonrpc = jsonrpc, id = id, result = result)
+                )
+            except TypeError as err:
+                traceback_info = rpcerror.get_traceback_string()
+                if "takes exactly" in safe_unicode(err) and "arguments" in safe_unicode(err):
+                    error = rpcerror.InvalidParams(data = traceback_info)
                     responses.append(
                         rpcresponse.Response(
                             jsonrpc = jsonrpc,
                             id = id,
-                            error = rpcerror.InvalidParams(data = traceback_info)
+                            error = error
+                        )
+                    )
+                    # Logging error
+                    logging.error(
+                        u"{error} -- {data}".format(
+                            error = safe_unicode(error),
+                            data = safe_unicode(error.data)
                         )
                     )
                 else:
+                    error = rpcerror.InternalError(data = traceback_info)
                     responses.append(
                         rpcresponse.Response(
                             jsonrpc = jsonrpc,
                             id = id,
-                            error = rpcerror.InternalError(data = traceback_info)
+                            error = error
                         )
                     )
-            except rpcerror.JsonRpcError, err:
+                    # Logging error
+                    logging.error(
+                        u"{error} -- {data}".format(
+                            error = safe_unicode(error),
+                            data = safe_unicode(error.data)
+                        )
+                    )
+            except rpcerror.JsonRpcError as err:
                 responses.append(
                     rpcresponse.Response(
                         jsonrpc = jsonrpc,
@@ -147,26 +157,45 @@ class JsonRpc(object):
                         error = err
                     )
                 )
-            except BaseException, err:
-                traceback_info = "".join(traceback.format_exception(*sys.exc_info()))
+                # Logging error
+                logging.error(
+                    u"{error} -- {data}".format(
+                        error = safe_unicode(err),
+                        data = safe_unicode(err.data)
+                    )
+                )
+            except Exception as err:
+                traceback_info = rpcerror.get_traceback_string()
                 if hasattr(err, "data"):
                     error_data = err.data
                 else:
                     error_data = None
+                error = rpcerror.InternalError(
+                    message = safe_unicode(err),
+                    data = safe_unicode(error_data or traceback_info)
+                )
                 responses.append(
                     rpcresponse.Response(
                         jsonrpc = jsonrpc,
                         id = id,
-                        error = rpcerror.InternalError(
-                            data = error_data or traceback_info
-                        )
+                        error = error
+                    )
+                )
+                # Logging error
+                logging.error(
+                    u"{error} -- {data}".format(
+                        error = safe_unicode(error),
+                        data = safe_unicode(error.data)
                     )
                 )
 
         # Convert responses to dictionaries and filter it
         responses_ = []
         for response in responses:
-            if response.id:
+            if (
+                bool(response.id) or
+                bool(unicode(response.id)) if response.id is not None else False
+            ):
                 responses_.append(response.to_dict())
         responses = responses_
 

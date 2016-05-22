@@ -57,9 +57,9 @@ class Response(Bunch):
         retdict = {}
         if self.jsonrpc:
             retdict["jsonrpc"] = self.jsonrpc
-        if not self.id is None:
+        if self.id is not None:
             retdict["id"] = self.id
-        if not self.result is None:
+        if self.result is not None:
             retdict["result"] = self.result
 
         # Error
@@ -96,7 +96,14 @@ class Response(Bunch):
         error = response_dict.get("error")
         if error:
             result = None
-            if "code" in error:
+            if isinstance(error, basestring):
+                # String Error
+                error = cls.Error(
+                    code = InternalError.code,
+                    message = error,
+                    data = None
+                )
+            elif "code" in error:
                 # JSON-RPC Standard Error
                 error = cls.Error(
                     code = error.get("code"),
