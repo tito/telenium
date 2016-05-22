@@ -1,4 +1,5 @@
 import sys
+import os
 from os.path import join, dirname
 sys.path += [join(dirname(__file__), "..", "libs")]
 
@@ -80,6 +81,10 @@ class TeleniumClient(pyjsonrpc.HttpRequestHandler):
     def ping(self):
         return True
 
+    @pyjsonrpc.rpcmethod
+    def get_token(self):
+        return os.environ.get("TELENIUM_TOKEN")
+
     def selectAll(self, selector, root=None):
         if root is None:
             root = App.get_running_app().root.parent
@@ -104,6 +109,12 @@ class TeleniumClient(pyjsonrpc.HttpRequestHandler):
         return "{}/{}[{}]".format(
             self.path_to(widget.parent), widget.__class__.__name__,
             widget.parent.children.index(widget))
+
+    @pyjsonrpc.rpcmethod
+    @kivythread
+    def app_quit(self):
+        App.get_running_app().stop()
+        return True
 
     @pyjsonrpc.rpcmethod
     def select(self, selector):
@@ -164,7 +175,7 @@ class TeleniumClient(pyjsonrpc.HttpRequestHandler):
         w = self.selectFirst(selector)
         if w:
             from kivy.core.window import Window
-            cx, cy = w.center
+            cx, cy = w.to_window(w.center_x, w.center_y)
             sx = cx / float(Window.width)
             sy = cy / float(Window.height)
             me = TeleniumMotionEvent("telenium",
