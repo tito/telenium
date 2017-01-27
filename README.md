@@ -2,12 +2,12 @@
 
 Telenium provide a framework to remote tests or control Kivy-based application:
 
-- selector support using XPath
-- create selector by touching the ui
-- query or set attribute on any widgets
-- execute remote code
-- unittests support
-- integrate as a Kivy modules
+- Selector support using XPATH-like syntax (`//BoxLayout[0]/Button[@text~="Close"]`)
+- Create selector by touching the UI
+- Query or set attribute on any widgets
+- Execute remote code
+- `unittests` support
+- Integrate as a Kivy modules
 
 # Run the application with telenium module
 
