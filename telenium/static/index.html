@@ -1,18 +1,73 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link href="/css/bootstrap.min.css" rel="stylesheet"/>
+    <link href="/css/bootstrap.min.css" rel="stylesheet" />
 </head>
+
 <body>
     <div class="container">
         <h1>Telenium</h1>
-        <div id="editor"/>
-        <script src="/js/underscore-min.js"></script>
-        <script src="/js/react-with-addons-0.13.1.js"></script>
-        <script src="/js/JSXTransformer-0.13.1.js"></script>
-        <script src="/js/ui.js" type="text/jsx"></script>
+        <h2>Execute</h2>
+        <div class="form-group">
+            <label for="">Entrypoint</label>
+            <input type="text" class="form-control">
+        </div>
+        <div class="form-group">
+            <label for="">Environments</label>
+            <table id="tl-cmd-env" class="table table-stripped">
+                <thead>
+                    <tr>
+                        <th>Key</th>
+                        <th>Value</th>
+                    </tr>
+                </thead>
+            </table>
+        </div>
+        <div class="form-group">
+            <button>Execute</button>
+        </div>
+
+        <h2>Tests</h2>
+        <table class="table table-stripped">
+            <thead>
+                <tr>
+                    <th>Selector</th>
+                    <th>Arguments</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="tl-cmd">
+            </tbody>
+        </table>
+        <div class="form-group">
+            <button id="btn-add-command">Add command</button>
+        </div>
     </div>
+
+    <script type="x-tmpl-mustache" id="tpl-command-new">
+        <tr>
+            <td>
+                <select name="" id="" class="form-control">
+                    <option value="wait_click">Wait and click</option>
+                    <option value="wait">Wait</option>
+                </select>
+            </td>
+            <td>
+                <input type="text" class="form-control">
+            </td>
+            <td>
+                <button class="btn" onclick="return telenium_remove_command(this)">
+                <i class="glyphicon glyphicon-remove"></i>
+                </button>
+            </td>
+        </tr>
+    </script>
+
+    <script src="/js/jquery-2.2.4.min.js"></script>
+    <script src="/js/mustache.min.js"></script>
+    <script src="/js/ui.js"></script>
 </body>
 </html>

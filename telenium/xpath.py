@@ -11,6 +11,8 @@ class Selector(object):
             setattr(self, key, value)
 
     def traverse_tree(self, root):
+        if not root:
+            return
         yield root
         for child in root.children:
             for result in self.traverse_tree(child):

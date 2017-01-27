@@ -1,3 +1,5 @@
+# coding=utf-8
+
 import sys
 import os
 from os.path import join, dirname
@@ -144,11 +146,24 @@ class TeleniumClient(pyjsonrpc.HttpRequestHandler):
             return True
 
     @pyjsonrpc.rpcmethod
+    @kivythread
+    def execute(self, cmd):
+        app = App.get_running_app()
+        idmap = {"app": app}
+        try:
+            exec cmd in idmap, idmap
+        except:
+            import traceback
+            traceback.print_exc()
+            return False
+        return True
+
+    @pyjsonrpc.rpcmethod
     def pick(self, all=False):
         widgets = []
         ev = threading.Event()
 
-        def on_touch_down(win, touch):
+        def on_touch_down(touch):
             root = App.get_running_app().root
             if all:
                 widgets[:] = list(collide_at(root, touch.x, touch.y))
@@ -159,9 +174,12 @@ class TeleniumClient(pyjsonrpc.HttpRequestHandler):
             return True
 
         from kivy.core.window import Window
-        Window.bind(on_touch_down=on_touch_down)
+        # Window.bind(on_touch_down=on_touch_down)
+        orig_on_touch_down = Window.on_touch_down
+        Window.on_touch_down = on_touch_down
         ev.wait()
-        Window.unbind(on_touch_down=on_touch_down)
+        Window.on_touch_down = orig_on_touch_down
+        # Window.unbind(on_touch_down=on_touch_down)
         if widgets:
             if all:
                 ret = map(self.path_to, widgets)
