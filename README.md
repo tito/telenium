@@ -122,8 +122,6 @@ class UITestCase(TeleniumTestCase):
 
 Return unique selectors for all widgets that matches the `selector`.
 
-Example:
-
 ```python
 >>> cli.select("//Label")
 [u"/WindowSDL/GridLayout/Label[0]", u"/WindowSDL/GridLayout/Label[1]"]
@@ -132,8 +130,6 @@ Example:
 ## `getattr(selector, key)`
 
 Return the value of an attribute on the first widget found by the `selector`.
-
-Example:
 
 ```python
 >>> cli.getattr("//Label")
@@ -145,8 +141,6 @@ u"Hello world"
 Set an attribute named by `key` to `value` for all widgets that matches the
 `selector`.
 
-Example:
-
 ```python
 >>> cli.setattr("//Label", "text", "Plop")
 True
@@ -155,8 +149,6 @@ True
 ## `element(selector)`
 
 Return `True` if at least one widget match the `selector`.
-
-Example:
 
 ```python
 >>> cli.element("//Label")
@@ -171,8 +163,6 @@ Execute python code in the application. Only the "app" symbol that point to the
 current running application is available. Return True if the code executed, or
 False if the code failed. Exception will be print withing the application logs.
 
-Example:
-
 ```python
 >>> cli.execute("app.call_one_app_method")
 True
@@ -183,8 +173,6 @@ True
 Return either the first widget selector you touch on the screen (`all=False`,
 the default), either it return the list of all the wigdets that are traversed
 where you touch the screen.
-
-Example:
 
 ```python
 >>> cli.pick()
@@ -197,8 +185,6 @@ u'/WindowSDL/Button[0]'
 
 Simulate a touch down/up on the first widget that match the `selector`. Return
 True if it worked.
-
-Example:
 
 ```python
 >>> cli.click_on("//Button[0]")
