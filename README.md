@@ -65,9 +65,13 @@ Telenium have a module you can use that ease unit tests: it launch the app
 and execute tests. For now, it has been tested and coded to work only
 locally using subprocess.
 
-2 new methods have been implemented: `assertExists` and `assertNotExists` to
-check if a selector exists or not in the app. They both have a `timeout`
-parameter that, if it reach, will fail the test.
+Additionnal methods:
+- `assertExists(selector, timeout=-1)` and
+  `assertNotExists(selector, timeout=-1)` to check if a selector exists or not
+  in the app. They both have a `timeout` parameter that, if it reach, will fail
+  the test.
+- `cli.wait_click(selector, timeout=-1)`: easy way to wait a selector to match,
+  then click on the first widget.
 
 Here is a real example that launch an app (default is "main.py"):
 
