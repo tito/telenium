@@ -19,19 +19,22 @@ installed within your application.
 Telenium can execute your application and manually add telenium_client to it.
 Just do::
 
-    python -m telenium.execute main.py
-
+```python
+python -m telenium.execute main.py
+```
 
 ## Method 2: Add telenium_client as a Kivy modules into your application
 
 Just copy/paste `mods/telenium_client.py` in your application, then before
 running your application, initialize it:
 
-    from os.path import dirname
-    from kivy.modules import Modules
-    from kivy.config import Config
-    Modules.add_path(dirname(__file__))
-    Config.set("modules", "telenium_client", "")
+```python
+from os.path import dirname
+from kivy.modules import Modules
+from kivy.config import Config
+Modules.add_path(dirname(__file__))
+Config.set("modules", "telenium_client", "")
+```
 
 You also need to add `pyjsonrpc` in your dependencies (`pip install pyjsonrpc`)
 
@@ -45,11 +48,13 @@ you can connect with::
 Then play with it. `cli` is the telenium client where you can invoke remote
 commands. See the `Telenium commands` to see what you can do:
 
-    >>> id = cli.pick() # then click somewhere on the UI
-    >>> cli.click_at(id)
-    True
-    >>> cli.setattr("//Label", "color", (0, 1, 0, 1))
-    True
+```python
+>>> id = cli.pick() # then click somewhere on the UI
+>>> cli.click_at(id)
+True
+>>> cli.setattr("//Label", "color", (0, 1, 0, 1))
+True
+```
 
 If a command returns True, it means it has been successful, otherwise it
 returns None.
@@ -66,46 +71,50 @@ parameter that, if it reach, will fail the test.
 
 Here is a real example that launch an app (default is "main.py"):
 
-  - It first go in the menu to click where it need to save a CSV (SaveButton, CascadeSaveButton then SaveCSVButton)
-  - Then wait at maximum 2s the popup to show with a label "Export to CSV"
-  - Then click on the "Close" button in the popup
-  - Then ensure the popup is closed by checking the label is gone.
+- It first go in the menu to click where it need to save a CSV (`SaveButton`, `CascadeSaveButton` then `SaveCSVButton`)
+- Then wait at maximum 2s the popup to show with a label "Export to CSV"
+- Then click on the "Close" button in the popup
+- Then ensure the popup is closed by checking the label is gone.
 
 Example:
 
-    from telenium.tests import TeleniumTestCase
+```python
+from telenium.tests import TeleniumTestCase
 
-    class UITestCase(TeleniumTestCase):
-        def test_export_csv(self):
-            self.cli.wait_click("//SaveButton")
-            self.cli.wait_click("//CascadeSaveButton")
-            self.cli.wait_click("//SaveCSVButton")
-            self.assertExists("//Label[@text~=\"Export to CSV\"]", timeout=2)
-            self.cli.wait_click("//FitButton[@text=\"Close\"]", timeout=2)
-            self.assertNotExists("//Label[@text~=\"Export to CSV\"]", timeout=2)
-
+class UITestCase(TeleniumTestCase):
+    def test_export_csv(self):
+        self.cli.wait_click("//SaveButton")
+        self.cli.wait_click("//CascadeSaveButton")
+        self.cli.wait_click("//SaveCSVButton")
+        self.assertExists("//Label[@text~=\"Export to CSV\"]", timeout=2)
+        self.cli.wait_click("//FitButton[@text=\"Close\"]", timeout=2)
+        self.assertNotExists("//Label[@text~=\"Export to CSV\"]", timeout=2)
+```
 
 Each new TeleniumTestCase will close and start the application, so you always
 run from a clean app. If you always need to do something before starting the
 test, you can overload the `setUpClass`. This will be executed once before any
 tests in the class starts:
 
-    class UITestCase(TeleniumTestCase):
-        @classmethod
-        def setUpClass(cls):
-            super(UITestCase, cls).setUpClass()
-            cls.cli.wait_click("//PresetSelectionItem[@text!~=\"ttyUSB0 on mintel\"]",
-                               timeout=10)
-            cls.cli.wait_click("//Button[@text=\"Connect\"]")
-            cls.cli.wait("//BottomLabel[@text=\"Done\"]", timeout=10)
+```python
+class UITestCase(TeleniumTestCase):
+    @classmethod
+    def setUpClass(cls):
+        super(UITestCase, cls).setUpClass()
+        cls.cli.wait_click("//PresetSelectionItem[@text!~=\"ttyUSB0 on mintel\"]",
+                           timeout=10)
+        cls.cli.wait_click("//Button[@text=\"Connect\"]")
+        cls.cli.wait("//BottomLabel[@text=\"Done\"]", timeout=10)
+```
 
 You can also change few parameters to change/add things in your application for
 unit testing if needed:
 
-    class UITestCase(TeleniumTestCase):
-        process_start_timeout = 5
-        cmd_env = {"I_AM_RUNNING_TEST": 1}
-
+```python
+class UITestCase(TeleniumTestCase):
+    process_start_timeout = 5
+    cmd_env = {"I_AM_RUNNING_TEST": 1}
+```
 
 # Telenium commands
 
@@ -115,8 +124,10 @@ Return unique selectors for all widgets that matches the `selector`.
 
 Example:
 
-    >>> cli.select("//Label")
-    [u"/WindowSDL/GridLayout/Label[0]", u"/WindowSDL/GridLayout/Label[1]"]
+```python
+>>> cli.select("//Label")
+[u"/WindowSDL/GridLayout/Label[0]", u"/WindowSDL/GridLayout/Label[1]"]
+```
 
 ## `getattr(selector, key)`
 
@@ -124,8 +135,10 @@ Return the value of an attribute on the first widget found by the `selector`.
 
 Example:
 
-    >>> cli.getattr("//Label")
-    u"Hello world"
+```python
+>>> cli.getattr("//Label")
+u"Hello world"
+```
 
 ## `setattr(selector, key, value)`
 
@@ -134,8 +147,10 @@ Set an attribute named by `key` to `value` for all widgets that matches the
 
 Example:
 
-    >>> cli.setattr("//Label", "text", "Plop")
-    True
+```python
+>>> cli.setattr("//Label", "text", "Plop")
+True
+```
 
 ## `element(selector)`
 
@@ -143,10 +158,12 @@ Return `True` if at least one widget match the `selector`.
 
 Example:
 
-    >>> cli.element("//Label")
-    True
-    >>> cli.element("//InvalidButton")
-    False
+```python
+>>> cli.element("//Label")
+True
+>>> cli.element("//InvalidButton")
+False
+```
 
 ## `execute(code)`
 
@@ -156,8 +173,10 @@ False if the code failed. Exception will be print withing the application logs.
 
 Example:
 
-    >>> cli.execute("app.call_one_app_method")
-    True
+```python
+>>> cli.execute("app.call_one_app_method")
+True
+```
 
 ## `pick(all=False)`
 
@@ -167,11 +186,12 @@ where you touch the screen.
 
 Example:
 
-    >>> cli.pick()
-    u'/WindowSDL/Button[0]'
-    >>> cli.pick(all=True)
-    [u'/WindowSDL/Button[0]',u'/WindowSDL']
-
+```python
+>>> cli.pick()
+u'/WindowSDL/Button[0]'
+>>> cli.pick(all=True)
+[u'/WindowSDL/Button[0]',u'/WindowSDL']
+```
 
 ## `click_on(selector)`
 
@@ -180,9 +200,10 @@ True if it worked.
 
 Example:
 
-    >>> cli.click_on("//Button[0]")
-    True
-
+```python
+>>> cli.click_on("//Button[0]")
+True
+```
 
 # Telenium selector syntax (XPATH)
 
@@ -201,21 +222,23 @@ Cheat sheet about telenium XPATH-based selector implementation.
 
 Some examples:
 
-    # Select all the boxlayout in the app
-    //BoxLayout
+```
+# Select all the boxlayout in the app
+//BoxLayout
 
-    # Take the first boxlayout
-    //BoxLayout[0]
+# Take the first boxlayout
+//BoxLayout[0]
 
-    # Get the Button as a direct descendant of the BoxLayout
-    //BoxLayout[0]/Button
+# Get the Button as a direct descendant of the BoxLayout
+//BoxLayout[0]/Button
 
-    # Or get the 5th Button that are anywhere under the BoxLayout (may or may
-    # not a direct descandant)
-    //BoxLayout[0]//Button
+# Or get the 5th Button that are anywhere under the BoxLayout (may or may
+# not a direct descandant)
+//BoxLayout[0]//Button
 
-    # Select the button that is written "Close"
-    //BoxLayout[0]//Button[@text="Close"]
+# Select the button that is written "Close"
+//BoxLayout[0]//Button[@text="Close"]
 
-    # Select the button that contain "Close"
-    //BoxLayout[0]//Button[@text~="Close"]
+# Select the button that contain "Close"
+//BoxLayout[0]//Button[@text~="Close"]
+```
