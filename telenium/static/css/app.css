@@ -1,0 +1,40 @@
+
+@keyframes clockwise {
+  to {
+    transform: rotate(360deg) translatez(0);
+  }
+}
+@keyframes counter-clockwise {
+  to {
+    transform: rotate(-360deg) translatez(0);
+  }
+}
+
+.progress-spinner {
+  height: 32px;
+  width: 32px;
+  border-width: 3px;
+  border-style: solid;
+  border-color: rgba(112, 112, 112, 0.75) rgba(36, 36, 36, 0.25) rgba(36, 36, 36, 0.25) rgba(36, 36, 36, 0.25);
+  border-radius: 100%;
+  animation: clockwise 0.75s linear infinite;
+}
+
+.test-status {
+    font-size: 24px;
+}
+
+.test-status-success {
+    color: #5cb85c;
+}
+.test-status-error {
+    color: #d9534f;
+}
+
+#modal-export .modal-dialog {
+    max-width: 90%;
+    width: 1024px;
+}
+#modal-export pre {
+    max-height: 500px;
+}

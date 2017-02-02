@@ -4,70 +4,162 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link href="/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="css/bootstrap.min.css" rel="stylesheet" />
+    <link href="css/app.css" rel="stylesheet" />
 </head>
 
 <body>
     <div class="container">
         <h1>Telenium</h1>
+        <button class="btn btn-primary" id="btn-execute">Start</button>
+        <button class="btn btn-default" id="btn-export-python">Export to Python</button>
+        <button class="btn btn-default" id="btn-export-json">Export to JSON</button>
+
         <h2>Execute</h2>
         <div class="form-group">
             <label for="">Entrypoint</label>
-            <input type="text" class="form-control">
+            <input type="text" class="form-control" id="tl-entrypoint">
         </div>
         <div class="form-group">
             <label for="">Environments</label>
-            <table id="tl-cmd-env" class="table table-stripped">
+            <table class="table table-stripped">
                 <thead>
                     <tr>
                         <th>Key</th>
                         <th>Value</th>
+                        <th>Action</th>
                     </tr>
                 </thead>
+                <tbody id="tl-env"></tbody>
             </table>
         </div>
         <div class="form-group">
-            <button>Execute</button>
+            <button class="btn btn-primary" id="btn-add-env">Add environment</button>
         </div>
 
         <h2>Tests</h2>
+        <button class="btn btn-primary" id="btn-play-all">Run all</button>
         <table class="table table-stripped">
             <thead>
                 <tr>
+                    <th>Status</th>
                     <th>Selector</th>
                     <th>Arguments</th>
                     <th>Action</th>
                 </tr>
             </thead>
-            <tbody id="tl-cmd">
+            <tbody id="tl-tests">
             </tbody>
         </table>
         <div class="form-group">
-            <button id="btn-add-command">Add command</button>
+            <button class="btn btn-primary" id="btn-add-test">Add command</button>
         </div>
     </div>
 
-    <script type="x-tmpl-mustache" id="tpl-command-new">
+    <div class="modal fade" tabindex="-1" role="dialog" id="modal-pick-wait">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title">Pick an element</h4>
+                </div>
+                <div class="modal-body">
+                    <p>Click on a widget in the application</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" tabindex="-1" role="dialog" id="modal-pick">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title">Pick an element</h4>
+                </div>
+                <div class="modal-body">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" tabindex="-1" role="dialog" id="modal-export">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title">Export</h4>
+                </div>
+                <div class="modal-body">
+                    <pre></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="x-tmpl-mustache" id="tpl-pick-list">
+        {{#selectors}}
+        <button onclick="telenium_pick_use($(this).data('selector'))" data-selector="{{.}}">{{.}}</button>
+        <br/>
+        {{/selectors}}
+    </script>
+
+    <script type="x-tmpl-mustache" id="tpl-test-new">
         <tr>
-            <td>
+            <td style="width: 48px;">
+                <div class="test-status test-status-running" style="display: none;">
+                    <div class="progress-spinner"></div>
+                </div>
+                <div class="test-status test-status-success" style="display: none;">
+                <i class="glyphicon glyphicon-ok"></i>
+                </div>
+                <div class="test-status test-status-error" style="display: none;">
+                <i class="glyphicon glyphicon-exclamation-sign"></i>
+                </div>
+            </td>
+            <td style="width: 150px;">
                 <select name="" id="" class="form-control">
                     <option value="wait_click">Wait and click</option>
                     <option value="wait">Wait</option>
+                    <option value="assertExists">Assert exists</option>
+                    <option value="assertNotExists">Assert not exists</option>
                 </select>
             </td>
             <td>
-                <input type="text" class="form-control">
+                <div class="input-group">
+                    <input type="text" class="form-control arg" value="{{ value }}">
+                    <span class="btn input-group-addon" onclick="return telenium_pick(this)">
+                        <i class="glyphicon glyphicon-screenshot"></i>
+                    </span>
+                </div>
+            </td>
+            <td style="width: 100px;">
+                <button class="btn btn-success" onclick="return telenium_play_test(this)">
+                <i class="glyphicon glyphicon-play"></i>
+                </button>
+                <button class="btn btn-danger" onclick="return telenium_remove_test(this)">
+                <i class="glyphicon glyphicon-remove"></i>
+                </button>
+            </td>
+        </tr>
+    </script>
+    <script type="x-tmpl-mustache" id="tpl-env-new">
+        <tr>
+            <td>
+                <input class="form-control" type="text" name="key[]" value="{{ key }}"/>
             </td>
             <td>
-                <button class="btn" onclick="return telenium_remove_command(this)">
+                <input class="form-control" type="text" name="value[]" value="{{ value }}"/>
+            </td>
+            <td style="width: 100px;">
+                <button class="btn btn-danger" onclick="return telenium_remove_env(this)">
                 <i class="glyphicon glyphicon-remove"></i>
                 </button>
             </td>
         </tr>
     </script>
 
-    <script src="/js/jquery-2.2.4.min.js"></script>
-    <script src="/js/mustache.min.js"></script>
-    <script src="/js/ui.js"></script>
+    <script src="js/jquery-2.2.4.min.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+    <script src="js/mustache.min.js"></script>
+    <script src="js/reconnecting-websocket.min.js"></script>
+    <script src="js/ui.js"></script>
 </body>
 </html>
