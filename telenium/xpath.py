@@ -18,6 +18,23 @@ class Selector(object):
             for result in self.traverse_tree(child):
                 yield result
 
+    def match_class(self, widget, classname):
+        if not classname.startswith("~"):
+            return widget.__class__.__name__ == classname
+        bases = [widget.__class__] + list(self.get_bases(widget.__class__))
+        bases = [cls.__name__ for cls in bases]
+        return classname[1:] in bases
+
+    def get_bases(self, cls):
+        for base in cls.__bases__:
+            if base.__name__ == 'object':
+                break
+            yield base
+            if base.__name__ == 'Widget':
+                break
+            for cbase in self.get_bases(base):
+                yield cbase
+
     def execute(self, root):
         return list(self.filter(root, [root]))
 
@@ -46,7 +63,7 @@ class AllClassSelector(Selector):
             items = [self.root]
         for item in items:
             for match_item in self.traverse_tree(item):
-                if match_item.__class__.__name__ == self.classname:
+                if self.match_class(match_item, self.classname):
                     yield match_item
 
     def __repr__(self):
@@ -60,7 +77,7 @@ class ChildrenClassSelector(Selector):
         items = list(items)
         for item in items:
             for child in item.children:
-                if child.__class__.__name__ == self.classname:
+                if self.match_class(child, self.classname):
                     yield child
 
     def __repr__(self):
@@ -72,7 +89,7 @@ class IndexSelector(Selector):
 
     def filter(self, root, items):
         try:
-            for index, item in enumerate(items):
+            for index, item in enumerate(reversed(list(items))):
                 if index == self.index:
                     yield item
                     return
@@ -123,7 +140,7 @@ class AttrOpSelector(Selector):
 
 
 class XpathParser(object):
-    WORD = re.compile("^(\w+)")
+    WORD = re.compile("^([~\w]+)")
 
     def parse(self, expr):
         root = None
