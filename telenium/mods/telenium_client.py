@@ -105,7 +105,8 @@ class TeleniumClient(pyjsonrpc.HttpRequestHandler):
             return getattr(widget, key)
 
     def path_to(self, widget):
-        root = App.get_running_app().root
+        from kivy.core.window import Window
+        root = Window
         if widget.parent is root or widget.parent == widget or not widget.parent:
             return "/{}".format(widget.__class__.__name__)
         return "{}/{}[{}]".format(
@@ -119,8 +120,57 @@ class TeleniumClient(pyjsonrpc.HttpRequestHandler):
         return True
 
     @pyjsonrpc.rpcmethod
-    def select(self, selector):
-        return map(self.path_to, self.selectAll(selector))
+    def app_ready(self):
+        app = App.get_running_app()
+        if app is None:
+            return False
+        if app.root is None:
+            return False
+        return True
+
+    @pyjsonrpc.rpcmethod
+    def select(self, selector, with_bounds=False):
+        if not with_bounds:
+            return map(self.path_to, self.selectAll(selector))
+
+        results = []
+        for widget in self.selectAll(selector):
+            left, bottom = widget.to_window(widget.x, widget.y)
+            right, top = widget.to_window(widget.x + widget.width, widget.y + widget.height)
+            bounds = (left, bottom, right, top)
+            path = self.path_to(widget)
+            results.append((path, bounds))
+        return results
+
+    @pyjsonrpc.rpcmethod
+    def highlight(self, selector):
+        if not selector:
+            results = []
+        else:
+            try:
+                results = self.select(selector, with_bounds=True)
+            except:
+                self._highlight([])
+                raise
+        self._highlight(results)
+        return results
+
+    @kivythread
+    def _highlight(self, results):
+        from kivy.graphics import Color, Rectangle, Canvas
+        from kivy.core.window import Window
+        if not hasattr(self, "_canvas"):
+            self._canvas = Canvas()
+
+        Window.canvas.remove(self._canvas)
+        Window.canvas.add(self._canvas)
+
+        self._canvas.clear()
+        with self._canvas:
+            Color(1, 0, 0, 0.5)
+            for widget, bounds in results:
+                left, bottom, right, top = bounds
+                Rectangle(pos=(left, bottom), size=(right-left, top-bottom))
 
     @pyjsonrpc.rpcmethod
     def getattr(self, selector, key):
