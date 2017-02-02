@@ -10,6 +10,24 @@
   }
 }
 
+body {
+    padding-top: 50px;
+}
+
+button.loading div.hidden {
+    display: block !important;
+}
+
+button.loading span {
+    display: none;
+}
+
+.toolbar-right {
+  margin-top: -60px;
+  float: right;
+}
+
+
 .progress-spinner {
   height: 32px;
   width: 32px;
@@ -18,6 +36,11 @@
   border-color: rgba(112, 112, 112, 0.75) rgba(36, 36, 36, 0.25) rgba(36, 36, 36, 0.25) rgba(36, 36, 36, 0.25);
   border-radius: 100%;
   animation: clockwise 0.75s linear infinite;
+}
+
+.progress-spinner-tiny {
+    width: 18px;
+    height: 18px;
 }
 
 .test-status {

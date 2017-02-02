@@ -6,6 +6,7 @@ import threading
 import cherrypy
 import json
 import subprocess
+import traceback
 from mako.template import Template
 from uuid import uuid4
 from telenium.client import TeleniumHttpClient
@@ -15,36 +16,55 @@ from os.path import dirname, join, realpath
 from time import time, sleep
 
 TPL_EXPORT_UNITTEST = u"""<%!
-    def pprint(text):
-        from pprint import pformat
-        return pformat(text)
+    def capitalize(text):
+        return text.capitalize()
+    def camelcase(text):
+        return "".join([x.strip().capitalize() for x in text.split()])
+    def funcname(text):
+        return text.lower().replace(" ", "_").strip()
 %># coding=utf-8
 
+import time
 from telenium.tests import TeleniumTestCase
 
 
-class AppTestCase(TeleniumTestCase):
+class ${settings["project"]|camelcase}TestCase(TeleniumTestCase):
     % if env:
     cmd_env = ${ env }
     % endif
+    cmd_entrypoint = [u'${ settings["entrypoint"] }']
 
-    def test_app(self):
-        % for key, value in tests:
+    % for test in tests:
+    % if test["name"] == "setUpClass":
+    <% vself = "cls" %>
+    @classmethod
+    def setUpClass(cls):
+        super(${settings["project"]|camelcase}TestCase, cls).setUpClass()
+    % else:
+    <% vself = "self" %>
+    def test_${test["name"]|funcname}(self):
+        % if not test["steps"]:
+        pass
+        % endif
+    % endif
+        % for key, value in test["steps"]:
         % if key == "wait":
-        self.cli.wait('${value}', timeout=10)
+        ${vself}.cli.wait('${value}', timeout=${settings["command-timeout"]})
         % elif key == "wait_click":
-        self.cli.wait_click('${value}', timeout=10)
+        ${vself}.cli.wait_click('${value}', timeout=${settings["command-timeout"]})
         % elif key == "assertExists":
-        self.assertExists('${value}', timeout=10)
+        ${vself}.assertExists('${value}', timeout=${settings["command-timeout"]})
         % elif key == "assertNotExists":
-        self.assertNotExists('${value}', timeout=10)
+        ${vself}.assertNotExists('${value}', timeout=${settings["command-timeout"]})
+        % elif key == "sleep":
+        time.sleep(${value})
         % endif
         % endfor
 
-# telenium export, don't delete
-export = ${ session | pprint,n }
+    % endfor
 """
 
+FILE_API_VERSION = 1
 
 def threaded(f):
     @functools.wraps(f)
@@ -57,10 +77,31 @@ def threaded(f):
     return _threaded
 
 
+def funcname(text):
+    return text.lower().replace(" ", "_").strip()
+
+
 class ApiWebSocket(WebSocket):
     t_process = None
     cli = None
-    session = {"entrypoint": "", "env": {}, "tests": []}
+    progress_count = 0
+    progress_total = 0
+    session = {
+        "settings": {
+            "project": "Test",
+            "entrypoint": "main.py",
+            "application-timeout": "10",
+            "command-timeout": "5"
+        },
+        "env": {},
+        "tests": [
+            {
+                "id": str(uuid4()),
+                "name": "New test",
+                "steps": []
+            }
+        ]
+    }
 
     def opened(self):
         super(ApiWebSocket, self).opened()
@@ -71,7 +112,10 @@ class ApiWebSocket(WebSocket):
 
     def received_message(self, message):
         msg = json.loads(message.data)
-        getattr(self, "cmd_{}".format(msg["cmd"]))(msg["options"])
+        try:
+            getattr(self, "cmd_{}".format(msg["cmd"]))(msg["options"])
+        except:
+            traceback.print_exc()
 
     def send_object(self, obj):
         data = json.dumps(obj)
@@ -79,6 +123,7 @@ class ApiWebSocket(WebSocket):
 
     def save(self):
         with open("session.dat", "w") as fd:
+            self.session["version_format"] = FILE_API_VERSION
             fd.write(json.dumps(self.session))
 
     def load(self):
@@ -88,12 +133,28 @@ class ApiWebSocket(WebSocket):
         except:
             pass
 
+    def get_test(self, test_id):
+        for test in self.session["tests"]:
+            if test["id"] == test_id:
+                return test
+
+    def get_test_by_name(self, name):
+        for test in self.session["tests"]:
+            if test["name"] == "setUpClass":
+                return test
+
+    @property
+    def is_running(self):
+        return self.t_process is not None
+
     # command implementation
 
     def cmd_recover(self, options):
-        self.send_object(["entrypoint", self.session["entrypoint"]])
+        self.send_object(["settings", self.session["settings"]])
         self.send_object(["env", self.session["env"].items()])
-        self.send_object(["tests", self.session["tests"]])
+        tests = [{"name": x["name"],
+                  "id": x["id"]} for x in self.session["tests"]]
+        self.send_object(["tests", tests])
         if self.t_process is not None:
             self.send_object(["status", "running"])
 
@@ -104,13 +165,35 @@ class ApiWebSocket(WebSocket):
             self.session["env"][key] = value
         self.save()
 
-    def cmd_sync_entrypoint(self, options):
-        self.session["entrypoint"] = options["entrypoint"]
+    def cmd_sync_settings(self, options):
+        self.session["settings"] = options["settings"]
         self.save()
 
-    def cmd_sync_tests(self, options):
-        self.session["tests"] = options["tests"]
+    def cmd_sync_test(self, options):
+        uid = options["id"]
+        for test in self.session["tests"]:
+            if test["id"] == uid:
+                test["name"] = options["name"]
+                test["steps"] = options["steps"]
         self.save()
+
+    def cmd_add_test(self, options):
+        self.session["tests"].append({
+            "id": str(uuid4()),
+            "name": "New test",
+            "steps": []
+        })
+        self.save()
+        self.send_object(["tests", self.session["tests"]])
+
+    def cmd_delete_test(self, options):
+        for test in self.session["tests"][:]:
+            if test["id"] == options["id"]:
+                self.session["tests"].remove(test)
+        if not self.session["tests"]:
+            self.cmd_add_test(None)
+        self.save()
+        self.send_object(["tests", self.session["tests"]])
 
     def cmd_select(self, options):
         if not self.cli:
@@ -125,6 +208,10 @@ class ApiWebSocket(WebSocket):
                 results = u"{}".format(e)
         self.send_object(["select", options["selector"], status, results])
 
+    def cmd_select_test(self, options):
+        test = self.get_test(options["id"])
+        self.send_object(["test", test])
+
     @threaded
     def cmd_pick(self, options):
         if not self.cli:
@@ -134,22 +221,64 @@ class ApiWebSocket(WebSocket):
 
     @threaded
     def cmd_execute(self, options):
-        self.ev_process = threading.Event()
         self.execute()
 
-    def cmd_run_test(self, options):
-        self.run_test(options["index"])
+    def cmd_run_step(self, options):
+        self.run_step(options["id"], options["index"])
 
+    @threaded
+    def cmd_run_steps(self, options):
+        test = self.get_test(options["id"])
+        if test is None:
+            self.send_object(["alert", "Test not found"])
+            return
+        if not self.is_running:
+            ev = self.execute()
+            ev.wait()
+        self.run_test(test)
+
+    @threaded
     def cmd_run_tests(self, options):
-        self.ev_process = threading.Event()
-        self.execute()
-        self.ev_process.wait()
-        self.run_tests()
+        # restart always from scratch
+        self.send_object(["progress", "started"])
+
+        # precalculate the number of steps to run
+        count = sum([len(x["steps"]) for x in self.session["tests"]])
+        self.progress_count = 0
+        self.progress_total = count
+
+        try:
+            ev = self.execute()
+            ev.wait()
+            setup = self.get_test_by_name("setUpClass")
+            if setup:
+                self.run_test(setup)
+            for test in self.session["tests"]:
+                if test["name"] == "setUpClass":
+                    continue
+                self.run_test(test)
+        finally:
+            self.send_object(["progress", "finished"])
+
+    def cmd_stop(self, options):
+        if self.t_process:
+            self.t_process.terminate()
 
     def cmd_export(self, options):
         try:
+            dtype = options["type"]
+            mimetype = {
+                "python": "text/plain",
+                "json": "application/json"
+            }[dtype]
+            ext = {
+                "python": "py",
+                "json": "json"
+            }[dtype]
+            key = funcname(self.session["settings"]["project"])
+            filename = "test_ui_{}.{}".format(key, ext)
             export = self.export(options["type"])
-            self.send_object(["export", options["type"], export])
+            self.send_object(["export", export, mimetype, filename, dtype])
         except Exception as e:
             self.send_object(["export", "error", u"{}".format(e)])
 
@@ -158,29 +287,34 @@ class ApiWebSocket(WebSocket):
             return Template(TPL_EXPORT_UNITTEST).render(session=self.session,
                                                         **self.session)
         elif kind == "json":
+            self.session["version_format"] = FILE_API_VERSION
             return json.dumps(self.session,
                               sort_keys=True,
                               indent=4,
                               separators=(',', ': '))
 
+    def execute(self):
+        ev = threading.Event()
+        self._execute(ev=ev)
+        return ev
+
     @threaded
-    def execute(self, wait=True):
-        self.send_object(["status", "running"])
+    def _execute(self, ev):
         self.t_process = None
         try:
             self.start_process()
-            self.ev_process.set()
+            ev.set()
             self.t_process.communicate()
-            self.send_object(["status", "stopped"])
+            self.send_object(["status", "stopped", None])
         except Exception as e:
             try:
                 self.t_process.terminate()
             except:
                 pass
-            self.send_object(["status", "exception", u"{}".format(e)])
+            self.send_object(["status", "stopped", u"{}".format(e)])
         finally:
             self.t_process = None
-            self.ev_process.set()
+            ev.set()
 
     def start_process(self):
         url = "http://localhost:9901/jsonrpc"
@@ -196,8 +330,9 @@ class ApiWebSocket(WebSocket):
             pass
 
         # prepare the application
-        cmd = ["python", "-m", "telenium.execute", self.session["entrypoint"]]
-        cwd = dirname(self.session["entrypoint"])
+        entrypoint = self.session["settings"]["entrypoint"]
+        cmd = ["python", "-m", "telenium.execute", entrypoint]
+        cwd = dirname(entrypoint)
         env = os.environ.copy()
         env.update(self.session["env"])
         env["TELENIUM_TOKEN"] = telenium_token
@@ -221,26 +356,40 @@ class ApiWebSocket(WebSocket):
         if cli.get_token() != telenium_token:
             raise Exception("Connected to another telenium server")
 
-    def run_tests(self):
-        for index in range(len(self.session["tests"])):
-            if not self.run_test(index):
-                break
-            sleep(0.2)
+        self.send_object(["status", "running"])
 
-    def run_test(self, index):
+    def run_test(self, test):
+        test_id = test["id"]
         try:
-            self.send_object(["run_test", index, "running"])
-            success = self._run_test(index)
+            self.send_object(["test", test])
+            self.send_object(["run_test", test_id, "running"])
+            for index, step in enumerate(test["steps"]):
+                if not self.run_step(test_id, index):
+                    break
+        except Exception as e:
+            self.send_object(["run_test", test_id, "error", str(e)])
+        else:
+            self.send_object(["run_test", test_id, "finished"])
+
+    def run_step(self, test_id, index):
+        self.progress_count += 1
+        self.send_object(["progress", "update", self.progress_count, self.progress_total])
+        try:
+            self.send_object(["run_step", test_id, index, "running"])
+            success = self._run_step(test_id, index)
             if success:
-                self.send_object(["run_test", index, "success"])
+                self.send_object(["run_step", test_id, index, "success"])
                 return True
             else:
-                self.send_object(["run_test", index, "error"])
+                self.send_object(["run_step", test_id, index, "error"])
         except Exception as e:
-            self.send_object(["run_test", index, "error", str(e)])
+            self.send_object(["run_step", test_id, index, "error", str(e)])
 
-    def _run_test(self, index):
-        cmd, selector = self.session["tests"][index]
+    def _run_step(self, test_id, index):
+        test = self.get_test(test_id)
+        if not test:
+            raise Exception("Unknown test")
+        cmd, selector = test["steps"][index]
         timeout = 5
         if cmd == "wait":
             return self.cli.wait(selector, timeout=timeout)
@@ -251,6 +400,9 @@ class ApiWebSocket(WebSocket):
             return self.cli.wait(selector, timeout=timeout) is True
         elif cmd == "assertNotExists":
             return self.assertNotExists(self.cli, selector, timeout=timeout)
+        elif cmd == "sleep":
+            sleep(float(selector))
+            return True
 
     def assertNotExists(self, cli, selector, timeout=-1):
         start = time()
@@ -313,13 +465,11 @@ class WebSocketServer(object):
 
 
 def preload_session(filename):
-    import imp
-    mod = imp.load_source("session", filename)
-    if not hasattr(mod, "export"):
-        print "ERROR: no telenium export found in", filename
-    else:
-        with open("session.dat", "w") as fd:
-            fd.write(json.dumps(mod.export))
+    with open(filename) as fd:
+        session = json.loads(fd.read())
+    with open("session.dat", "w") as fd:
+        fd.write(json.dumps(session))
+
 
 WebSocketPlugin(cherrypy.engine).subscribe()
 cherrypy.tools.websocket = WebSocketTool()

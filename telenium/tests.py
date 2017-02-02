@@ -47,7 +47,8 @@ class TeleniumTestCase(unittest.TestCase):
         cmd = cls.cmd_process + cls.cmd_entrypoint
 
         # start the application
-        cls.process = subprocess.Popen(cmd, env=env)
+        cwd = os.path.dirname(cls.cmd_entrypoint[0])
+        cls.process = subprocess.Popen(cmd, env=env, cwd=cwd)
 
         # wait for telenium server to be online
         start = time()

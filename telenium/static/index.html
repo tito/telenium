@@ -9,16 +9,72 @@
 </head>
 
 <body>
-    <div class="container">
-        <h1>Telenium</h1>
-        <button class="btn btn-primary" id="btn-execute">Start</button>
-        <button class="btn btn-default" id="btn-export-python">Export to Python</button>
-        <button class="btn btn-default" id="btn-export-json">Export to JSON</button>
+    <nav class="navbar navbar-default navbar-fixed-top nav">
+        <div class="container-fluid">
+            <div class="navbar-header">
+                <a href="#" class="navbar-brand">Telenium</a>
+            </div>
+            <ul class="nav navbar-nav">
+                <li class="navpage active" data-page="project">
+                    <a href="#">Project</a>
+                </li>
+                <li class="navpage" data-page="tests">
+                    <a href="#">Tests</a>
+                </li>
+            </ul>
+            <ul class="nav navbar-nav navbar-right">
+                <li>
+                    <form action="" class="navbar-form narbar-left">
+                        <div class="form-group">
+                            <button class="btn btn-default" id="btn-execute">
+                                <div class="progress-spinner progress-spinner-tiny hidden"></div>
+                                <span class="glyphicon glyphicon-play"></span>
+                            </button>
+                        </div>
+                    </form>
+                </li>
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" haspopup="true" aria-expanded="false">
+                        Export <span class="caret"></span>
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a href="#" id="btn-export-python">Export to Python (unittest)</a></li>
+                        <li><a href="#" id="btn-export-json">Export to JSON</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+    </nav>
 
-        <h2>Execute</h2>
+    <div class="page container" id="page-project">
+        <h1 class="page-header">Project</h1>
         <div class="form-group">
-            <label for="">Entrypoint</label>
-            <input type="text" class="form-control" id="tl-entrypoint">
+            <label for="">Project name</label>
+            <input type="text" class="form-control" data-settings-key="project">
+            <p class="help-block">
+                Name of your test, used for generating class name
+            </p>
+        </div>
+        <div class="form-group">
+            <label for="">Application Entrypoint</label>
+            <input type="text" class="form-control" data-settings-key="entrypoint">
+            <p class="help-block">
+                Path to your main.py (or any other entrypoint)
+            </p>
+        </div>
+        <div class="form-group">
+            <label for="">Application startup timeout</label>
+            <input type="text" class="form-control" data-settings-key="application-timeout" value="10">
+            <p class="help-block">
+                Maximum time to wait the application to spin up
+            </p>
+        </div>
+        <div class="form-group">
+            <label for="">Command timeout</label>
+            <input type="text" class="form-control" data-settings-key="command-timeout" value="5">
+            <p class="help-block">
+                Maximum time to wait for a selector or a command to work
+            </p>
         </div>
         <div class="form-group">
             <label for="">Environments</label>
@@ -36,9 +92,33 @@
         <div class="form-group">
             <button class="btn btn-primary" id="btn-add-env">Add environment</button>
         </div>
+    </div>
 
-        <h2>Tests</h2>
-        <button class="btn btn-primary" id="btn-play-all">Run all</button>
+    <div class="page container hidden" id="page-tests">
+        <h1 class="page-header">Tests</h1>
+        <div class="toolbar-right">
+            <form class="form-inline">
+                <div class="form-group">
+                    <select id="tl-tests" class="form-control">
+                    </select>
+                </div>
+                <button class="btn btn-primary" id="btn-add-test">Add a new test</button>
+                <button class="btn btn-success" id="btn-run-tests">Run all tests</button>
+            </form>
+        </div>
+
+        <div class="progress-box hidden">
+            <div class="progress">
+                <div class="progress-bar progress-bar-success progress-bar-striped" role="progressbar" aria-valuenow="40" aria-valuemin="0" aria-valuemax="100" style="width: 40%">
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="">Test name</label>
+            <input type="text" class="form-control" data-test-key="name">
+        </div>
+
         <table class="table table-stripped">
             <thead>
                 <tr>
@@ -48,12 +128,16 @@
                     <th>Action</th>
                 </tr>
             </thead>
-            <tbody id="tl-tests">
+            <tbody id="tl-steps">
             </tbody>
         </table>
-        <div class="form-group">
-            <button class="btn btn-primary" id="btn-add-test">Add command</button>
+
+        <div class="toolbar">
+            <button class="btn btn-primary" id="btn-add-step">Add step</button>
+            <button class="btn btn-success" id="btn-run-steps">Run steps</button>
+            <button class="btn btn-danger" id="btn-delete-test">Delete this test</button>
         </div>
+
     </div>
 
     <div class="modal fade" tabindex="-1" role="dialog" id="modal-pick-wait">
@@ -90,6 +174,10 @@
                 <div class="modal-body">
                     <pre></pre>
                 </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                  <button type="button" class="btn btn-primary" id="btn-export-save">Save</button>
+                </div>
             </div>
         </div>
     </div>
@@ -101,7 +189,7 @@
         {{/selectors}}
     </script>
 
-    <script type="x-tmpl-mustache" id="tpl-test-new">
+    <script type="x-tmpl-mustache" id="tpl-step-new">
         <tr>
             <td style="width: 48px;">
                 <div class="test-status test-status-running" style="display: none;">
@@ -120,6 +208,7 @@
                     <option value="wait">Wait</option>
                     <option value="assertExists">Assert exists</option>
                     <option value="assertNotExists">Assert not exists</option>
+                    <option value="sleep">Sleep</option>
                 </select>
             </td>
             <td>
@@ -131,10 +220,10 @@
                 </div>
             </td>
             <td style="width: 100px;">
-                <button class="btn btn-success" onclick="return telenium_play_test(this)">
+                <button class="btn btn-success" onclick="return telenium_play_step(this)">
                 <i class="glyphicon glyphicon-play"></i>
                 </button>
-                <button class="btn btn-danger" onclick="return telenium_remove_test(this)">
+                <button class="btn btn-danger" onclick="return telenium_remove_step(this)">
                 <i class="glyphicon glyphicon-remove"></i>
                 </button>
             </td>
@@ -148,7 +237,7 @@
             <td>
                 <input class="form-control" type="text" name="value[]" value="{{ value }}"/>
             </td>
-            <td style="width: 100px;">
+            <td style="width: 60px;">
                 <button class="btn btn-danger" onclick="return telenium_remove_env(this)">
                 <i class="glyphicon glyphicon-remove"></i>
                 </button>
