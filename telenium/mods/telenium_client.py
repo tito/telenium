@@ -160,26 +160,25 @@ class TeleniumClient(pyjsonrpc.HttpRequestHandler):
 
     @pyjsonrpc.rpcmethod
     def pick(self, all=False):
+        from kivy.core.window import Window
         widgets = []
         ev = threading.Event()
 
         def on_touch_down(touch):
             root = App.get_running_app().root
-            if all:
-                widgets[:] = list(collide_at(root, touch.x, touch.y))
-            else:
-                widget = pick(root, touch.x, touch.y)
-                widgets.append(widget)
+            for widget in Window.children:
+                if all:
+                    widgets.extend(list(collide_at(root, touch.x, touch.y)))
+                else:
+                    widget = pick(root, touch.x, touch.y)
+                    widgets.append(widget)
             ev.set()
             return True
 
-        from kivy.core.window import Window
-        # Window.bind(on_touch_down=on_touch_down)
         orig_on_touch_down = Window.on_touch_down
         Window.on_touch_down = on_touch_down
         ev.wait()
         Window.on_touch_down = orig_on_touch_down
-        # Window.unbind(on_touch_down=on_touch_down)
         if widgets:
             if all:
                 ret = map(self.path_to, widgets)
