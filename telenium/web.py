@@ -66,6 +66,7 @@ class ${settings["project"]|camelcase}TestCase(TeleniumTestCase):
 
 FILE_API_VERSION = 1
 
+
 def threaded(f):
     @functools.wraps(f)
     def _threaded(*args, **kwargs):
