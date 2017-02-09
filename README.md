@@ -8,6 +8,11 @@ Telenium provide a framework to remote tests or control Kivy-based application:
 - Execute remote code
 - `unittests` support
 - Integrate as a Kivy modules
+- Web IDE
+
+![Telenium IDE](https://cloud.githubusercontent.com/assets/37904/22790912/f44b8166-eee7-11e6-9a78-120f78bde220.png)
+
+![Telenium IDE export](https://cloud.githubusercontent.com/assets/37904/22791059/70fb6988-eee8-11e6-91f4-0b87af33b5b6.png)
 
 # Run the application with telenium module
 
