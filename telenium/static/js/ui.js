@@ -17,6 +17,10 @@ function telenium_execute() {
         telenium_send("stop", {});
 }
 
+function telenium_save_local() {
+    telenium_send("save_local", {});
+}
+
 function telenium_add_env() {
     var template = $("#tpl-env-new").html();
     var rendered = Mustache.render(template, {});
@@ -200,6 +204,10 @@ function telenium_process(msg) {
         } else {
             $(".progress-box").addClass("hidden");
         }
+    } else if (cmd == "changed") {
+        $("#btn-save").prop("disabled", !msg[1]);
+    } else if (cmd == "is_local") {
+        $("#btn-save").show();
     }
 }
 
@@ -367,6 +375,7 @@ $(document).ready(function() {
     $("#btn-add-test").click(telenium_add_test);
     $("#btn-add-step").click(telenium_add_step);
     $("#btn-add-env").click(telenium_add_env);
+    $("#btn-save").click(telenium_save_local);
     $("#btn-run-steps").click(telenium_run_steps);
     $("#btn-run-tests").click(telenium_run_tests);
     $("#btn-delete-test").click(telenium_delete_test);

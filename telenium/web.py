@@ -2,6 +2,7 @@
 
 import os
 import re
+import sys
 import functools
 import threading
 import cherrypy
@@ -73,6 +74,7 @@ class ${settings["project"]|camelcase}TestCase(TeleniumTestCase):
 """
 
 FILE_API_VERSION = 2
+local_filename = None
 
 
 def threaded(f):
@@ -89,8 +91,10 @@ def threaded(f):
 def funcname(text):
     return text.lower().replace(" ", "_").strip()
 
+
 def getarg(text):
     return re.match("^(\w+)", text).groups()[0]
+
 
 class ApiWebSocket(WebSocket):
     t_process = None
@@ -131,8 +135,20 @@ class ApiWebSocket(WebSocket):
         self.send(data, False)
 
     def save(self):
+        self.session["version_format"] = FILE_API_VERSION
+
+        # check if the file changed
+        if local_filename is not None:
+            changed = False
+            try:
+                with open(local_filename) as fd:
+                    data = json.loads(fd.read())
+                changed = data != self.session
+            except:
+                changed = True
+            self.send_object(["changed", changed])
+
         with open("session.dat", "w") as fd:
-            self.session["version_format"] = FILE_API_VERSION
             fd.write(json.dumps(self.session))
 
     def load(self):
@@ -159,6 +175,8 @@ class ApiWebSocket(WebSocket):
     # command implementation
 
     def cmd_recover(self, options):
+        if local_filename:
+            self.send_object(["is_local", True])
         self.send_object(["settings", self.session["settings"]])
         self.send_object(["env", self.session["env"].items()])
         tests = [{
@@ -168,6 +186,26 @@ class ApiWebSocket(WebSocket):
         self.send_object(["tests", tests])
         if self.t_process is not None:
             self.send_object(["status", "running"])
+
+    def cmd_save_local(self, options):
+        try:
+            assert local_filename is not None
+            # save json source
+            data = self.export("json")
+            with open(local_filename, "w") as fd:
+                fd.write(data)
+
+            # auto export to python if exists
+            filename = local_filename.replace(".json", ".py")
+            if os.path.exists(filename):
+                data = self.export("python")
+                with open(filename, "w") as fd:
+                    fd.write(data)
+            self.send_object(["save_local", "ok"])
+            self.send_object(["changed", False])
+        except Exception as e:
+            traceback.print_exc()
+            self.send_object(["save_local", "error", repr(e)])
 
     def cmd_sync_env(self, options):
         while self.session["env"]:
@@ -482,6 +520,11 @@ class WebSocketServer(object):
 
 
 def preload_session(filename):
+    global local_filename
+    local_filename = filename
+    if not local_filename.endswith(".json"):
+        print("You can load only telenium-json files.")
+        sys.exit(1)
     with open(filename) as fd:
         session = json.loads(fd.read())
     session = upgrade_version(session)
@@ -512,7 +555,6 @@ cherrypy.tools.websocket = WebSocketTool()
 
 if __name__ == "__main__":
     import sys
-    print sys.argv
     if len(sys.argv) > 1:
         filename = sys.argv[1]
         preload_session(filename)
