@@ -8,3 +8,5 @@
 *.swp
 *.DS_Store
 *.kpf
+*.egg-info
+session.dat
