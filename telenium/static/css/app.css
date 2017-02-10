@@ -61,3 +61,8 @@ button.loading span {
 #modal-export pre {
     max-height: 500px;
 }
+
+#tl-tests input.step-selector,
+#tl-tests input.step-arg {
+    font-family: monospace;
+}

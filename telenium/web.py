@@ -1,6 +1,7 @@
 # coding=utf-8
 
 import os
+import re
 import functools
 import threading
 import cherrypy
@@ -22,6 +23,9 @@ TPL_EXPORT_UNITTEST = u"""<%!
         return "".join([x.strip().capitalize() for x in text.split()])
     def funcname(text):
         return text.lower().replace(" ", "_").strip()
+    def getarg(text):
+        import re
+        return re.match("^(\w+)", text).groups()[0]
 %># coding=utf-8
 
 import time
@@ -47,7 +51,7 @@ class ${settings["project"]|camelcase}TestCase(TeleniumTestCase):
         pass
         % endif
     % endif
-        % for key, value in test["steps"]:
+        % for key, value, arg in test["steps"]:
         % if key == "wait":
         ${vself}.cli.wait('${value}', timeout=${settings["command-timeout"]})
         % elif key == "wait_click":
@@ -56,6 +60,10 @@ class ${settings["project"]|camelcase}TestCase(TeleniumTestCase):
         ${vself}.assertExists('${value}', timeout=${settings["command-timeout"]})
         % elif key == "assertNotExists":
         ${vself}.assertNotExists('${value}', timeout=${settings["command-timeout"]})
+        % elif key == "assertAttributeValue":
+        attr_name = '${arg|getarg}'
+        attr_value = ${vself}.cli.getattr('${value}', attr_name)
+        ${vself}.assertTrue(eval(arg, {attr_name: attr_value}))
         % elif key == "sleep":
         time.sleep(${value})
         % endif
@@ -64,7 +72,7 @@ class ${settings["project"]|camelcase}TestCase(TeleniumTestCase):
     % endfor
 """
 
-FILE_API_VERSION = 1
+FILE_API_VERSION = 2
 
 
 def threaded(f):
@@ -81,6 +89,8 @@ def threaded(f):
 def funcname(text):
     return text.lower().replace(" ", "_").strip()
 
+def getarg(text):
+    return re.match("^(\w+)", text).groups()[0]
 
 class ApiWebSocket(WebSocket):
     t_process = None
@@ -95,13 +105,11 @@ class ApiWebSocket(WebSocket):
             "command-timeout": "5"
         },
         "env": {},
-        "tests": [
-            {
-                "id": str(uuid4()),
-                "name": "New test",
-                "steps": []
-            }
-        ]
+        "tests": [{
+            "id": str(uuid4()),
+            "name": "New test",
+            "steps": []
+        }]
     }
 
     def opened(self):
@@ -153,8 +161,10 @@ class ApiWebSocket(WebSocket):
     def cmd_recover(self, options):
         self.send_object(["settings", self.session["settings"]])
         self.send_object(["env", self.session["env"].items()])
-        tests = [{"name": x["name"],
-                  "id": x["id"]} for x in self.session["tests"]]
+        tests = [{
+            "name": x["name"],
+            "id": x["id"]
+        } for x in self.session["tests"]]
         self.send_object(["tests", tests])
         if self.t_process is not None:
             self.send_object(["status", "running"])
@@ -253,11 +263,13 @@ class ApiWebSocket(WebSocket):
             ev.wait()
             setup = self.get_test_by_name("setUpClass")
             if setup:
-                self.run_test(setup)
+                if not self.run_test(setup):
+                    return
             for test in self.session["tests"]:
                 if test["name"] == "setUpClass":
                     continue
-                self.run_test(test)
+                if not self.run_test(test):
+                    return
         finally:
             self.send_object(["progress", "finished"])
 
@@ -272,10 +284,7 @@ class ApiWebSocket(WebSocket):
                 "python": "text/plain",
                 "json": "application/json"
             }[dtype]
-            ext = {
-                "python": "py",
-                "json": "json"
-            }[dtype]
+            ext = {"python": "py", "json": "json"}[dtype]
             key = funcname(self.session["settings"]["project"])
             filename = "test_ui_{}.{}".format(key, ext)
             export = self.export(options["type"])
@@ -285,14 +294,12 @@ class ApiWebSocket(WebSocket):
 
     def export(self, kind):
         if kind == "python":
-            return Template(TPL_EXPORT_UNITTEST).render(session=self.session,
-                                                        **self.session)
+            return Template(TPL_EXPORT_UNITTEST).render(
+                session=self.session, **self.session)
         elif kind == "json":
             self.session["version_format"] = FILE_API_VERSION
-            return json.dumps(self.session,
-                              sort_keys=True,
-                              indent=4,
-                              separators=(',', ': '))
+            return json.dumps(
+                self.session, sort_keys=True, indent=4, separators=(',', ': '))
 
     def execute(self):
         ev = threading.Event()
@@ -366,7 +373,8 @@ class ApiWebSocket(WebSocket):
             self.send_object(["run_test", test_id, "running"])
             for index, step in enumerate(test["steps"]):
                 if not self.run_step(test_id, index):
-                    break
+                    return
+            return True
         except Exception as e:
             self.send_object(["run_test", test_id, "error", str(e)])
         else:
@@ -374,7 +382,8 @@ class ApiWebSocket(WebSocket):
 
     def run_step(self, test_id, index):
         self.progress_count += 1
-        self.send_object(["progress", "update", self.progress_count, self.progress_total])
+        self.send_object(
+            ["progress", "update", self.progress_count, self.progress_total])
         try:
             self.send_object(["run_step", test_id, index, "running"])
             success = self._run_step(test_id, index)
@@ -390,7 +399,7 @@ class ApiWebSocket(WebSocket):
         test = self.get_test(test_id)
         if not test:
             raise Exception("Unknown test")
-        cmd, selector = test["steps"][index]
+        cmd, selector, arg = test["steps"][index]
         timeout = 5
         if cmd == "wait":
             return self.cli.wait(selector, timeout=timeout)
@@ -401,6 +410,10 @@ class ApiWebSocket(WebSocket):
             return self.cli.wait(selector, timeout=timeout) is True
         elif cmd == "assertNotExists":
             return self.assertNotExists(self.cli, selector, timeout=timeout)
+        elif cmd == "assertAttributeValue":
+            attr_name = getarg(arg)
+            attr_value = self.cli.getattr(selector, attr_name)
+            return bool(eval(arg, {attr_name: attr_value}))
         elif cmd == "sleep":
             sleep(float(selector))
             return True
@@ -440,23 +453,26 @@ class WebSocketServer(object):
             "server.socket_port": self.port,
             "server.socket_host": self.host,
         })
-        cherrypy.tree.mount(Root(),
-                            "/",
-                            config={
-                                "/": {
-                                    "tools.sessions.on": True
-                                },
-                                "/ws": {
-                                    "tools.websocket.on": True,
-                                    "tools.websocket.handler_cls": ApiWebSocket
-                                },
-                                "/static": {
-                                    "tools.staticdir.on": True,
-                                    "tools.staticdir.dir": join(
-                                        realpath(dirname(__file__)), "static"),
-                                    "tools.staticdir.index": "index.html"
-                                }
-                            })
+        cherrypy.tree.mount(
+            Root(),
+            "/",
+            config={
+                "/": {
+                    "tools.sessions.on": True
+                },
+                "/ws": {
+                    "tools.websocket.on": True,
+                    "tools.websocket.handler_cls": ApiWebSocket
+                },
+                "/static": {
+                    "tools.staticdir.on":
+                    True,
+                    "tools.staticdir.dir":
+                    join(realpath(dirname(__file__)), "static"),
+                    "tools.staticdir.index":
+                    "index.html"
+                }
+            })
         cherrypy.engine.start()
         cherrypy.engine.block()
 
@@ -468,8 +484,27 @@ class WebSocketServer(object):
 def preload_session(filename):
     with open(filename) as fd:
         session = json.loads(fd.read())
+    session = upgrade_version(session)
     with open("session.dat", "w") as fd:
         fd.write(json.dumps(session))
+
+
+def upgrade_version(session):
+    # automatically upgrade to latest version
+    version_format = session.get("version_format")
+    if version_format is None or version_format == FILE_API_VERSION:
+        return session
+    session["version_format"] += 1
+    version_format = session["version_format"]
+    print("Upgrade to version {}".format(version_format))
+    if version_format == 2:
+        # migrate from version 1 to 2
+        # arg added in steps, so steps must have 3 arguments not 2.
+        for test in session["tests"]:
+            for step in test["steps"]:
+                if len(step) == 2:
+                    step.append(None)
+    return session
 
 
 WebSocketPlugin(cherrypy.engine).subscribe()

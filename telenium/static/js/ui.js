@@ -25,9 +25,7 @@ function telenium_add_env() {
 
 function telenium_add_step() {
     var template = $("#tpl-step-new").html();
-    var rendered = Mustache.render(template, {
-        name: "Luke"
-    });
+    var rendered = Mustache.render(template, {});
     $("#tl-steps").append(rendered);
     telenium_sync_test();
 }
@@ -72,7 +70,7 @@ function telenium_pick(el) {
 
 function telenium_pick_use(selector) {
     $("#modal-pick").modal("hide");
-    $(current_el).parent().find("input.arg").val(selector);
+    $(current_el).parent().find("input.selector").val(selector);
     telenium_sync_test();
 }
 
@@ -239,12 +237,15 @@ function telenium_sync_test() {
     var t_types = $.map($("#tl-steps select"), function(item) {
         return $(item).val();
     })
-    var t_args = $.map($("#tl-steps input.arg"), function(item) {
+    var t_selectors = $.map($("#tl-steps input.step-selector"), function(item) {
+        return $(item).val();
+    })
+    var t_args = $.map($("#tl-steps input.step-arg"), function(item) {
         return $(item).val();
     })
     var steps = [];
     for (var i = 0; i < t_types.length; i++) {
-        steps.push([t_types[i], t_args[i]]);
+        steps.push([t_types[i], t_selectors[i], t_args[i]]);
     }
     telenium_send("sync_test", {
         "id": current_test_id,
@@ -305,13 +306,16 @@ function app_sync_test() {
     template = $("#tpl-step-new").html();
     for (var i = 0; i < steps.length; i++) {
         var entry = steps[i];
+        console.log(entry)
         var tpl = $(Mustache.render(template, {
             "key": entry[0],
-            "value": entry[1]
+            "selector": entry[1],
+            "arg": entry[2]
         }));
         tpl.find("option[value=" + entry[0] + "]")
             .attr("selected", true);
         $("#tl-steps").append(tpl);
+        $("#tl-steps select").change();
     }
 }
 
@@ -355,7 +359,6 @@ function app_export_save() {
     });
 }
 
-
 $(document).ready(function() {
     $(".navpage").click(function(ev, el) {
         app_show_page($(this).data("page"));
@@ -386,13 +389,20 @@ $(document).ready(function() {
     $("#tl-steps").on("blur", "select,input", function() {
         telenium_sync_test();
     });
-    $("#tl-steps").on("input", "input.arg", function(ev) {
+    $("#tl-steps").on("change", "select", function() {
+        var container = $($(this).parents()[1]).find(".step-arg-container");
+        if ($(this).find(":selected").data("need-arg") == "1") {
+            container.show();
+        } else {
+            container.hide();
+        }
+    }).on("input", "input.step-selector", function(ev) {
         current_el = ev.target;
         telenium_select($(current_el).val());
-    }).on("focus", "input.arg", function(ev) {
+    }).on("focus", "input.step-selector", function(ev) {
         current_el = ev.target;
         telenium_select($(current_el).val());
-    }).on("blur", "input.arg", function(ev) {
+    }).on("blur", "input.step-selector", function(ev) {
         current_el = ev.target;
         telenium_select("");
     });

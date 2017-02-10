@@ -123,7 +123,7 @@
             <thead>
                 <tr>
                     <th>Status</th>
-                    <th>Selector</th>
+                    <th>Action</th>
                     <th>Arguments</th>
                     <th>Action</th>
                 </tr>
@@ -202,21 +202,25 @@
                 <i class="glyphicon glyphicon-exclamation-sign"></i>
                 </div>
             </td>
-            <td style="width: 150px;">
+            <td style="width: 200px;">
                 <select name="" id="" class="form-control">
                     <option value="wait_click">Wait and click</option>
                     <option value="wait">Wait</option>
                     <option value="assertExists">Assert exists</option>
                     <option value="assertNotExists">Assert not exists</option>
+                    <option value="assertAttributeValue" data-need-arg="1">Assert attribute value</option>
                     <option value="sleep">Sleep</option>
                 </select>
             </td>
             <td>
                 <div class="input-group">
-                    <input type="text" class="form-control arg" value="{{ value }}">
+                    <input type="text" class="form-control step-selector" value="{{ selector }}" placeholder='XPATH selector like //Button[@text~="Hello"]'>
                     <span class="btn input-group-addon" onclick="return telenium_pick(this)">
                         <i class="glyphicon glyphicon-screenshot"></i>
                     </span>
+                </div>
+                <div class="step-arg-container" style="display: none">
+                    <input type="text" class="form-control step-arg" value="{{ arg }}" placeholder='Expression to evaluate: text == "Hello"'>
                 </div>
             </td>
             <td style="width: 100px;">
