@@ -38,7 +38,6 @@ class ${settings["project"]|camelcase}TestCase(TeleniumTestCase):
     cmd_env = ${ env }
     % endif
     cmd_entrypoint = [u'${ settings["entrypoint"] }']
-
     % for test in tests:
     % if test["name"] == "setUpClass":
     <% vself = "cls" %>
@@ -52,7 +51,7 @@ class ${settings["project"]|camelcase}TestCase(TeleniumTestCase):
         pass
         % endif
     % endif
-        % for key, value, arg in test["steps"]:
+        % for key, value, arg1, arg2 in test["steps"]:
         % if key == "wait":
         ${vself}.cli.wait('${value}', timeout=${settings["command-timeout"]})
         % elif key == "wait_click":
@@ -62,18 +61,19 @@ class ${settings["project"]|camelcase}TestCase(TeleniumTestCase):
         % elif key == "assertNotExists":
         ${vself}.assertNotExists('${value}', timeout=${settings["command-timeout"]})
         % elif key == "assertAttributeValue":
-        attr_name = '${arg|getarg}'
+        attr_name = '${arg1|getarg}'
         attr_value = ${vself}.cli.getattr('${value}', attr_name)
-        ${vself}.assertTrue(eval(arg, {attr_name: attr_value}))
+        ${vself}.assertTrue(eval('${arg1}', {attr_name: attr_value}))
+        % elif key == "setAttribute":
+        ${vself}.cli.setattr('${value}', '${arg1}', ${arg2})
         % elif key == "sleep":
         time.sleep(${value})
         % endif
         % endfor
-
     % endfor
 """
 
-FILE_API_VERSION = 2
+FILE_API_VERSION = 3
 local_filename = None
 
 
@@ -154,7 +154,9 @@ class ApiWebSocket(WebSocket):
     def load(self):
         try:
             with open("session.dat") as fd:
-                self.session.update(json.loads(fd.read()))
+                session = json.loads(fd.read())
+            session = upgrade_version(session)
+            self.session.update(session)
         except:
             pass
 
@@ -195,12 +197,11 @@ class ApiWebSocket(WebSocket):
             with open(local_filename, "w") as fd:
                 fd.write(data)
 
-            # auto export to python if exists
+            # auto export to python
             filename = local_filename.replace(".json", ".py")
-            if os.path.exists(filename):
-                data = self.export("python")
-                with open(filename, "w") as fd:
-                    fd.write(data)
+            data = self.export("python")
+            with open(filename, "w") as fd:
+                fd.write(data)
             self.send_object(["save_local", "ok"])
             self.send_object(["changed", False])
         except Exception as e:
@@ -437,7 +438,7 @@ class ApiWebSocket(WebSocket):
         test = self.get_test(test_id)
         if not test:
             raise Exception("Unknown test")
-        cmd, selector, arg = test["steps"][index]
+        cmd, selector, arg1, arg2 = test["steps"][index]
         timeout = 5
         if cmd == "wait":
             return self.cli.wait(selector, timeout=timeout)
@@ -449,9 +450,11 @@ class ApiWebSocket(WebSocket):
         elif cmd == "assertNotExists":
             return self.assertNotExists(self.cli, selector, timeout=timeout)
         elif cmd == "assertAttributeValue":
-            attr_name = getarg(arg)
+            attr_name = getarg(arg1)
             attr_value = self.cli.getattr(selector, attr_name)
-            return bool(eval(arg, {attr_name: attr_value}))
+            return bool(eval(arg1, {attr_name: attr_value}))
+        elif cmd == "setAttribute":
+            return self.cli.setattr(selector, arg1, eval(arg2))
         elif cmd == "sleep":
             sleep(float(selector))
             return True
@@ -525,11 +528,14 @@ def preload_session(filename):
     if not local_filename.endswith(".json"):
         print("You can load only telenium-json files.")
         sys.exit(1)
-    with open(filename) as fd:
-        session = json.loads(fd.read())
-    session = upgrade_version(session)
-    with open("session.dat", "w") as fd:
-        fd.write(json.dumps(session))
+    if not os.path.exists(filename):
+        print("Create new file at {}".format(local_filename))
+    else:
+        with open(filename) as fd:
+            session = json.loads(fd.read())
+        session = upgrade_version(session)
+        with open("session.dat", "w") as fd:
+            fd.write(json.dumps(session))
 
 
 def upgrade_version(session):
@@ -541,11 +547,16 @@ def upgrade_version(session):
     version_format = session["version_format"]
     print("Upgrade to version {}".format(version_format))
     if version_format == 2:
-        # migrate from version 1 to 2
         # arg added in steps, so steps must have 3 arguments not 2.
         for test in session["tests"]:
             for step in test["steps"]:
                 if len(step) == 2:
+                    step.append(None)
+    elif version_format == 3:
+        # arg added in steps, so steps must have 4 arguments not 3.
+        for test in session["tests"]:
+            for step in test["steps"]:
+                if len(step) == 3:
                     step.append(None)
     return session
 

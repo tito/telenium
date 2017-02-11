@@ -248,12 +248,15 @@ function telenium_sync_test() {
     var t_selectors = $.map($("#tl-steps input.step-selector"), function(item) {
         return $(item).val();
     })
-    var t_args = $.map($("#tl-steps input.step-arg"), function(item) {
+    var t_args1 = $.map($("#tl-steps input.step-arg1"), function(item) {
+        return $(item).val();
+    })
+    var t_args2 = $.map($("#tl-steps input.step-arg2"), function(item) {
         return $(item).val();
     })
     var steps = [];
     for (var i = 0; i < t_types.length; i++) {
-        steps.push([t_types[i], t_selectors[i], t_args[i]]);
+        steps.push([t_types[i], t_selectors[i], t_args1[i], t_args2[i]]);
     }
     telenium_send("sync_test", {
         "id": current_test_id,
@@ -314,11 +317,11 @@ function app_sync_test() {
     template = $("#tpl-step-new").html();
     for (var i = 0; i < steps.length; i++) {
         var entry = steps[i];
-        console.log(entry)
         var tpl = $(Mustache.render(template, {
             "key": entry[0],
             "selector": entry[1],
-            "arg": entry[2]
+            "arg1": entry[2],
+            "arg2": entry[3]
         }));
         tpl.find("option[value=" + entry[0] + "]")
             .attr("selected", true);
@@ -345,6 +348,7 @@ function app_set_progress(value) {
 }
 
 var textFile = null;
+
 function makeTextFile(text, mimetype) {
     var data = new Blob([text], {
         type: mimetype
@@ -360,7 +364,7 @@ function app_export_save() {
     var link = document.createElement("a");
     link.setAttribute("download", latest_export["filename"]);
     link.href = makeTextFile(latest_export["data"], latest_export["mimetype"]);
-    window.requestAnimationFrame(function () {
+    window.requestAnimationFrame(function() {
         var event = new MouseEvent("click");
         link.dispatchEvent(event);
         document.body.removeChild(link);
@@ -399,12 +403,32 @@ $(document).ready(function() {
         telenium_sync_test();
     });
     $("#tl-steps").on("change", "select", function() {
-        var container = $($(this).parents()[1]).find(".step-arg-container");
-        if ($(this).find(":selected").data("need-arg") == "1") {
-            container.show();
+        var parent = $($(this).parents()[1]);
+        var container = parent.find(".step-arg-container");
+        var selected = $(this).find(":selected");
+        if (typeof selected.data("arg0") === "undefined") {
+            parent.find(".step-selector")
+                .prop("placeholder", 'XPATH selector like //Button[@text~="Hello"]');
         } else {
-            container.hide();
+            parent.find(".step-selector")
+                .prop("placeholder", selected.data("arg0"));
         }
+
+        if (typeof selected.data("arg1") === "undefined") {
+            container.hide();
+            return;
+        }
+        container.find(".step-arg1").prop("placeholder", selected.data("arg1"));
+        if (typeof selected.data("arg2") === "undefined") {
+            container.find(".step-arg2").hide();
+        } else {
+            container.find(".step-arg2")
+                .prop("placeholder", selected.data("arg2"))
+                .show();
+        }
+
+        container.show();
+
     }).on("input", "input.step-selector", function(ev) {
         current_el = ev.target;
         telenium_select($(current_el).val());
