@@ -66,6 +66,8 @@ class ${settings["project"]|camelcase}TestCase(TeleniumTestCase):
         ${vself}.assertTrue(eval('${arg1}', {attr_name: attr_value}))
         % elif key == "setAttribute":
         ${vself}.cli.setattr('${value}', '${arg1}', ${arg2})
+        % elif key == "sendKeycode":
+        ${vself}.cli.send_keycode('${value}')
         % elif key == "sleep":
         time.sleep(${value})
         % endif
@@ -455,6 +457,9 @@ class ApiWebSocket(WebSocket):
             return bool(eval(arg1, {attr_name: attr_value}))
         elif cmd == "setAttribute":
             return self.cli.setattr(selector, arg1, eval(arg2))
+        elif cmd == "sendKeycode":
+            self.cli.send_keycode(selector)
+            return True
         elif cmd == "sleep":
             sleep(float(selector))
             return True

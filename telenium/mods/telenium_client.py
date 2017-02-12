@@ -2,6 +2,7 @@
 
 import sys
 import os
+import re
 from os.path import join, dirname
 sys.path += [join(dirname(__file__), "..", "libs")]
 
@@ -13,6 +14,7 @@ import pyjsonrpc
 from telenium.xpath import XpathParser
 from kivy.input.motionevent import MotionEvent
 from kivy.input.provider import MotionEventProvider
+from kivy.compat import unichr
 from itertools import count
 
 nextid = count()
@@ -251,6 +253,39 @@ class TeleniumClient(pyjsonrpc.HttpRequestHandler):
             telenium_input.events.append(("begin", me))
             telenium_input.events.append(("end", me))
             return True
+
+    @pyjsonrpc.rpcmethod
+    @kivythread
+    def send_keycode(self, keycodes):
+        # very hard to get it right, not fully tested and fail proof.
+        # just the basics.
+        from kivy.core.window import Window, Keyboard
+        keys = keycodes.split("+")
+        scancode = 0
+        key = None
+        sym = ""
+        modifiers = []
+        for el in keys:
+            if re.match("^[A-Z]", el):
+                lower_el = el.lower()
+                # modifier detected ? add it
+                if lower_el in ("ctrl", "meta", "alt", "shift"):
+                    modifiers.append(lower_el)
+                    continue
+                # not a modifier, convert to scancode
+                sym = lower_el
+                key = Keyboard.keycodes.get(lower_el, 0)
+            else:
+                # may fail, so nothing would be done.
+                key = int(el)
+                sym = unichr(key)
+        print("Telenium: send key key={!r} scancode={} sym={!r} modifiers={}".format(
+            key, scancode, sym, modifiers
+        ))
+        if not Window.dispatch("on_key_down", key, scancode, sym, modifiers):
+            Window.dispatch("on_keyboard", key, scancode, sym, modifiers)
+        Window.dispatch("on_key_up", key, scancode)
+        return True
 
 
 def register_input_provider():
