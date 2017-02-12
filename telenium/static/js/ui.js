@@ -439,5 +439,17 @@ $(document).ready(function() {
         current_el = ev.target;
         telenium_select("");
     });
+
+    $("#tl-steps-container").sortable({
+        containerSelector: "table",
+        itemPath: "> tbody",
+        itemSelector: "tr",
+        placeholder: "<tr class='placeholder'/>",
+        onDrop: function($item, container, _super) {
+            _super($item, container);
+            telenium_sync_test()
+        }
+    });
+
     telenium_connect();
 });
