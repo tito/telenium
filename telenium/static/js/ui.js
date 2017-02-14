@@ -39,9 +39,19 @@ function telenium_remove_env(ev) {
     telenium_sync_env();
 }
 
+function _telenium_ev_step_to_row(ev) {
+    var parents = $(ev).parentsUntil("tbody");
+    return parents[parents.length - 1];
+}
+
 function telenium_remove_step(ev) {
-    $($(ev).parents()[1]).detach();
+    $(_telenium_ev_step_to_row(ev)).detach();
     telenium_sync_test();
+}
+
+function telenium_duplicate_step(ev) {
+    var parent = _telenium_ev_step_to_row(ev);
+    $(parent).clone().insertAfter(parent);
 }
 
 function telenium_connect() {

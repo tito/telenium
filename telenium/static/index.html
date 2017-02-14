@@ -239,9 +239,20 @@
                 <button class="btn btn-success" onclick="return telenium_play_step(this)">
                 <i class="glyphicon glyphicon-play"></i>
                 </button>
-                <button class="btn btn-danger" onclick="return telenium_remove_step(this)">
-                <i class="glyphicon glyphicon-remove"></i>
-                </button>
+                <div class="btn-group">
+                    <button class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expended="false">
+                        <i class="glyphicon glyphicon-option-vertical"></i>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li>
+                            <a href="#" onclick="return telenium_duplicate_step(this)">Duplicate</a>
+                        </li>
+                        <li role="separator" class="divider"></li>
+                        <li>
+                            <a href="#" onclick="return telenium_remove_step(this)" class="text-danger">Delete</a>
+                        </li>
+                    </ul>
+                </div>
             </td>
         </tr>
     </script>
