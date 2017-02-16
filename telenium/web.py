@@ -13,6 +13,7 @@ import webbrowser
 import argparse
 from mako.template import Template
 from uuid import uuid4
+import telenium
 from telenium.client import TeleniumHttpClient
 from ws4py.server.cherrypyserver import WebSocketPlugin, WebSocketTool
 from ws4py.websocket import WebSocket
@@ -513,6 +514,9 @@ class WebSocketServer(object):
 
     def run(self):
         cherrypy.config.update({
+            "global": {
+                "environment": "production"
+            },
             "server.socket_port": self.port,
             "server.socket_host": self.host,
         })
@@ -537,8 +541,10 @@ class WebSocketServer(object):
                 }
             })
         cherrypy.engine.start()
+        url = "http://{}:{}/".format(self.host, self.port)
+        print("Telenium {} ready at {}".format(telenium.__version__, url))
         if self.open_webbrowser:
-            webbrowser.open("http://{}:{}/".format(self.host, self.port))
+            webbrowser.open(url)
         cherrypy.engine.block()
 
     def stop(self):
