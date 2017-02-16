@@ -302,8 +302,10 @@ class ApiWebSocket(WebSocket):
             self.send_object(["alert", "Test not found"])
             return
         if not self.is_running:
-            ev = self.execute()
-            ev.wait()
+            ev_start, ev_stop = self.execute()
+            ev_start.wait()
+            if ev_stop.is_set():
+                return
         self.run_test(test)
 
     @threaded
@@ -317,8 +319,10 @@ class ApiWebSocket(WebSocket):
         self.progress_total = count
 
         try:
-            ev = self.execute()
-            ev.wait()
+            ev_start, ev_stop = self.execute()
+            ev_start.wait()
+            if ev_stop.is_set():
+                return
             setup = self.get_test_by_name("setUpClass")
             if setup:
                 if not self.run_test(setup):
@@ -360,16 +364,17 @@ class ApiWebSocket(WebSocket):
                 self.session, sort_keys=True, indent=4, separators=(',', ': '))
 
     def execute(self):
-        ev = threading.Event()
-        self._execute(ev=ev)
-        return ev
+        ev_start = threading.Event()
+        ev_stop = threading.Event()
+        self._execute(ev_start=ev_start, ev_stop=ev_stop)
+        return ev_start, ev_stop
 
     @threaded
-    def _execute(self, ev):
+    def _execute(self, ev_start, ev_stop):
         self.t_process = None
         try:
             self.start_process()
-            ev.set()
+            ev_start.set()
             self.t_process.communicate()
             self.send_object(["status", "stopped", None])
         except Exception as e:
@@ -377,10 +382,13 @@ class ApiWebSocket(WebSocket):
                 self.t_process.terminate()
             except:
                 pass
-            self.send_object(["status", "stopped", u"{}".format(e)])
+            try:
+                self.send_object(["status", "stopped", u"{}".format(e)])
+            except:
+                pass
         finally:
             self.t_process = None
-            ev.set()
+            ev_stop.set()
 
     def start_process(self):
         url = "http://localhost:9901/jsonrpc"
