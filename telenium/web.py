@@ -9,6 +9,8 @@ import cherrypy
 import json
 import subprocess
 import traceback
+import webbrowser
+import argparse
 from mako.template import Template
 from uuid import uuid4
 from telenium.client import TeleniumHttpClient
@@ -16,6 +18,8 @@ from ws4py.server.cherrypyserver import WebSocketPlugin, WebSocketTool
 from ws4py.websocket import WebSocket
 from os.path import dirname, join, realpath
 from time import time, sleep
+
+SESSION_FN = ".telenium.dat"
 
 TPL_EXPORT_UNITTEST = u"""<%!
     def capitalize(text):
@@ -150,12 +154,12 @@ class ApiWebSocket(WebSocket):
                 changed = True
             self.send_object(["changed", changed])
 
-        with open("session.dat", "w") as fd:
+        with open(SESSION_FN, "w") as fd:
             fd.write(json.dumps(self.session))
 
     def load(self):
         try:
-            with open("session.dat") as fd:
+            with open(SESSION_FN) as fd:
                 session = json.loads(fd.read())
             session = upgrade_version(session)
             self.session.update(session)
@@ -235,6 +239,18 @@ class ApiWebSocket(WebSocket):
             "name": "New test",
             "steps": []
         })
+        self.save()
+        self.send_object(["tests", self.session["tests"]])
+
+    def cmd_clone_test(self, options):
+        for test in self.session["tests"]:
+            if test["id"] != options["test_id"]:
+                continue
+            clone_test = test.copy()
+            clone_test["id"] = str(uuid4())
+            clone_test["name"] += " (1)"
+            self.session["tests"].append(clone_test)
+            break
         self.save()
         self.send_object(["tests", self.session["tests"]])
 
@@ -488,11 +504,12 @@ class Root(object):
 
 
 class WebSocketServer(object):
-    def __init__(self, host="0.0.0.0", port=8080):
+    def __init__(self, host="0.0.0.0", port=8080, open_webbrowser=True):
         super(WebSocketServer, self).__init__()
         self.host = host
         self.port = port
         self.daemon = True
+        self.open_webbrowser = open_webbrowser
 
     def run(self):
         cherrypy.config.update({
@@ -520,6 +537,8 @@ class WebSocketServer(object):
                 }
             })
         cherrypy.engine.start()
+        if self.open_webbrowser:
+            webbrowser.open("http://{}:{}/".format(self.host, self.port))
         cherrypy.engine.block()
 
     def stop(self):
@@ -539,7 +558,7 @@ def preload_session(filename):
         with open(filename) as fd:
             session = json.loads(fd.read())
         session = upgrade_version(session)
-        with open("session.dat", "w") as fd:
+        with open(SESSION_FN, "w") as fd:
             fd.write(json.dumps(session))
 
 
@@ -569,11 +588,34 @@ def upgrade_version(session):
 WebSocketPlugin(cherrypy.engine).subscribe()
 cherrypy.tools.websocket = WebSocketTool()
 
-if __name__ == "__main__":
-    import sys
-    if len(sys.argv) > 1:
-        filename = sys.argv[1]
-        preload_session(filename)
-    server = WebSocketServer(port=8080)
+
+def run():
+
+    parser = argparse.ArgumentParser(description="Telenium IDE")
+    parser.add_argument(
+        "filename",
+        type=str,
+        default=None,
+        nargs="?",
+        help="Telenium JSON file")
+    parser.add_argument(
+        "--new", action="store_true", help="Start a new session")
+    parser.add_argument(
+        "--port", type=int, default=8080, help="Telenium IDE port")
+    parser.add_argument(
+        "--notab",
+        action="store_true",
+        help="Prevent opening the IDE in the browser")
+    args = parser.parse_args()
+    if args.new:
+        if os.path.exists(SESSION_FN):
+            os.unlink(SESSION_FN)
+    if args.filename:
+        preload_session(args.filename)
+    server = WebSocketServer(port=args.port, open_webbrowser=not args.notab)
     server.run()
     server.stop()
+
+
+if __name__ == "__main__":
+    run()

@@ -113,6 +113,11 @@ function telenium_add_test() {
     telenium_send("add_test", {});
 }
 
+function telenium_clone_test() {
+    telenium_send("clone_test", {"test_id": current_test_id});
+    current_test_id = null;
+}
+
 function telenium_process(msg) {
     cmd = msg[0];
     console.log(msg)
@@ -387,6 +392,7 @@ $(document).ready(function() {
     })
     $("#btn-execute").click(telenium_execute);
     $("#btn-add-test").click(telenium_add_test);
+    $("#btn-clone-test").click(telenium_clone_test);
     $("#btn-add-step").click(telenium_add_step);
     $("#btn-add-env").click(telenium_add_env);
     $("#btn-save").click(telenium_save_local);

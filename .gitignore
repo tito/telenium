@@ -10,3 +10,5 @@
 *.kpf
 *.egg-info
 session.dat
+build
+dist
