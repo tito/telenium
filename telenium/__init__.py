@@ -1,5 +1,3 @@
-import sys
-from os.path import join, dirname
+# coding=utf-8
 
-__version__ = "0.2.4"
-sys.path += [join(dirname(__file__), "libs")]
+__version__ = "0.2.6"

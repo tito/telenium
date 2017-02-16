@@ -41,7 +41,7 @@ setup(
     description=("Kivy automation, can be used to do GUI tests."),
     long_description=long_description,
     keywords=["kivy", "automate", "unittest", "wait", "condition"],
-    packages=["telenium"],
+    packages=["telenium", "telenium.mods"],
     entry_points={
         "console_scripts": [
             "telenium=telenium.web:run"
@@ -51,6 +51,7 @@ setup(
         "Mako>=1.0.6",
         "CherryPy==8.5.0",  # recent cherrypy are incompatible with ws4py
         "ws4py>=0.3.5",
+        "python-jsonrpc>=0.10.0"
     ],
     include_package_data=True,
     zip_safe=False,

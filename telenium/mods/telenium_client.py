@@ -3,9 +3,6 @@
 import sys
 import os
 import re
-from os.path import join, dirname
-sys.path += [join(dirname(__file__), "..", "libs")]
-
 from kivy.logger import Logger
 from kivy.app import App
 from kivy.clock import Clock
