@@ -178,7 +178,7 @@ class ApiWebSocket(WebSocket):
 
     def get_test_by_name(self, name):
         for test in self.session["tests"]:
-            if test["name"] in ("setUpClass", "init"):
+            if test["name"] == name:
                 return test
 
     @property

@@ -24,17 +24,17 @@
             </ul>
             <ul class="nav navbar-nav navbar-right">
                 <li>
-                    <form action="" class="navbar-form narbar-left">
-                        <a href="#" class="btn btn-default" disabled="disabled" style="display: none" id="btn-save">
+                    <div class="navbar-form narbar-left">
+                        <button class="btn btn-default" disabled="disabled" style="display: none" id="btn-save">
                             <span class="glyphicon glyphicon-floppy-disk"></span>
-                        </a>
+                        </button>
                         <div class="form-group">
-                            <a href="#" class="btn btn-default" id="btn-execute">
+                            <button class="btn btn-default" id="btn-execute">
                                 <div class="progress-spinner progress-spinner-tiny hidden"></div>
                                 <span class="glyphicon glyphicon-play"></span>
-                            </a>
+                            </button>
                         </div>
-                    </form>
+                    </div>
                 </li>
                 <li class="dropdown">
                     <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" haspopup="true" aria-expanded="false">
@@ -100,15 +100,15 @@
     <div class="page container hidden" id="page-tests">
         <h1 class="page-header">Tests</h1>
         <div class="toolbar-right">
-            <form class="form-inline">
+            <div class="form-inline">
                 <div class="form-group">
                     <select id="tl-tests" class="form-control">
                     </select>
                 </div>
-                <a href="#" class="btn btn-primary" id="btn-add-test">Add</a>
-                <a href="#" class="btn btn-primary" id="btn-clone-test">Clone</a>
-                <a href="#" class="btn btn-success" id="btn-run-tests">Run all</a>
-            </form>
+                <button class="btn btn-primary" id="btn-add-test">Add</button>
+                <button class="btn btn-primary" id="btn-clone-test">Clone</button>
+                <button class="btn btn-success" id="btn-run-tests">Run all</button>
+            </div>
         </div>
 
         <div class="progress-box hidden">
