@@ -23,7 +23,7 @@ installed within your application.
 ## Method 1: Run your application with telenium client
 
 Telenium can execute your application and manually add telenium_client to it.
-Just do::
+Just do:
 
 ```python
 python -m telenium.execute main.py
