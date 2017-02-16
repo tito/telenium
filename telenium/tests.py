@@ -27,6 +27,8 @@ class TeleniumTestCase(unittest.TestCase):
     #: Command to start the process (cmd_entrypoint is appended to this)
     cmd_process = ["python", "-m", "telenium.execute"]
 
+    _telenium_init = False
+
     @classmethod
     def start_process(cls):
         cls.telenium_token = str(uuid4())
@@ -73,18 +75,19 @@ class TeleniumTestCase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        TeleniumTestCase._telenium_init = False
         cls.start_process()
         super(TeleniumTestCase, cls).setUpClass()
 
     @classmethod
     def tearDownClass(cls):
+        TeleniumTestCase._telenium_init = False
         cls.stop_process()
         super(TeleniumTestCase, cls).tearDownClass()
 
     def setUp(self):
-        if not hasattr(TeleniumTestCase, "_telenium_init"):
-            if hasattr(self, "init"):
-                self.init()
+        if not TeleniumTestCase._telenium_init:
+            self.init()
             TeleniumTestCase._telenium_init = True
 
     def assertExists(self, selector, timeout=-1):
