@@ -81,6 +81,12 @@ class TeleniumTestCase(unittest.TestCase):
         cls.stop_process()
         super(TeleniumTestCase, cls).tearDownClass()
 
+    def setUp(self):
+        if not hasattr(TeleniumTestCase, "_telenium_init"):
+            if hasattr(self, "init"):
+                self.init()
+            TeleniumTestCase._telenium_init = True
+
     def assertExists(self, selector, timeout=-1):
         self.assertTrue(self.cli.wait(selector, timeout=timeout))
 

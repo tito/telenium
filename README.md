@@ -125,18 +125,16 @@ class UITestCase(TeleniumTestCase):
 
 Each new TeleniumTestCase will close and start the application, so you always
 run from a clean app. If you always need to do something before starting the
-test, you can overload the `setUpClass`. This will be executed once before any
+test, you can overload the `init`. This will be executed once before any
 tests in the class starts:
 
 ```python
 class UITestCase(TeleniumTestCase):
-    @classmethod
-    def setUpClass(cls):
-        super(UITestCase, cls).setUpClass()
-        cls.cli.wait_click("//PresetSelectionItem[@text!~=\"ttyUSB0 on mintel\"]",
+    def init(self):
+        self.cli.wait_click("//PresetSelectionItem[@text!~=\"ttyUSB0 on mintel\"]",
                            timeout=10)
-        cls.cli.wait_click("//Button[@text=\"Connect\"]")
-        cls.cli.wait("//BottomLabel[@text=\"Done\"]", timeout=10)
+        self.cli.wait_click("//Button[@text=\"Connect\"]")
+        self.cli.wait("//BottomLabel[@text=\"Done\"]", timeout=10)
 ```
 
 You can also change few parameters to change/add things in your application for

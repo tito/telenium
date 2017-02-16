@@ -28,8 +28,11 @@ TPL_EXPORT_UNITTEST = u"""<%!
     def camelcase(text):
         return "".join([x.strip().capitalize() for x in text.split()])
     def funcname(text):
+        if text == "init":
+            return "init"
         import re
-        return re.sub(r"[^a-z0-9_]", "_", text.lower().strip())
+        suffix = re.sub(r"[^a-z0-9_]", "_", text.lower().strip())
+        return "test_{}".format(suffix)
     def getarg(text):
         import re
         return re.match("^(\w+)", text).groups()[0]
@@ -52,7 +55,7 @@ class ${settings["project"]|camelcase}TestCase(TeleniumTestCase):
         super(${settings["project"]|camelcase}TestCase, cls).setUpClass()
     % else:
     <% vself = "self" %>
-    def test_${test["name"]|funcname}(self):
+    def ${test["name"]|funcname}(self):
         % if not test["steps"]:
         pass
         % endif
@@ -175,7 +178,7 @@ class ApiWebSocket(WebSocket):
 
     def get_test_by_name(self, name):
         for test in self.session["tests"]:
-            if test["name"] == "setUpClass":
+            if test["name"] in ("setUpClass", "init"):
                 return test
 
     @property
@@ -328,8 +331,12 @@ class ApiWebSocket(WebSocket):
             if setup:
                 if not self.run_test(setup):
                     return
+            setup = self.get_test_by_name("init")
+            if setup:
+                if not self.run_test(setup):
+                    return
             for test in self.session["tests"]:
-                if test["name"] == "setUpClass":
+                if test["name"] in ("setUpClass", "init"):
                     continue
                 if not self.run_test(test):
                     return
