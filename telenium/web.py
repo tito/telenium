@@ -28,7 +28,8 @@ TPL_EXPORT_UNITTEST = u"""<%!
     def camelcase(text):
         return "".join([x.strip().capitalize() for x in text.split()])
     def funcname(text):
-        return text.lower().replace(" ", "_").strip()
+        import re
+        return re.sub(r"[^a-z0-9_]", "_", text.lower().strip())
     def getarg(text):
         import re
         return re.match("^(\w+)", text).groups()[0]
