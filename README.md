@@ -15,10 +15,32 @@ Telenium provide a framework to remote tests or control Kivy-based application:
 
 ![Telenium IDE export](https://cloud.githubusercontent.com/assets/37904/22791059/70fb6988-eee8-11e6-91f4-0b87af33b5b6.png)
 
+# Installation
+
+```
+pip install telenium
+```
+
+# Run the Telenium IDE
+
+It will start a webserver on http://127.0.0.1:8080/ and automatically open a new
+tab in your favorite webbrowser. You'll be able to configure where your main.py
+is, and start writing tests directly:
+
+```
+telenium
+```
+
+You can also edit telenium-json:
+
+```
+telenium tests/test-ui-myfeature.json
+```
+
 # Run the application with telenium module
 
-In order to remote control your application, you need the Telenium client
-installed within your application.
+If you don't use the IDE, in order to remote control your application,
+you need the Telenium client installed within your application.
 
 ## Method 1: Run your application with telenium client
 
