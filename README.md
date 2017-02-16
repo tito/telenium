@@ -64,7 +64,7 @@ Modules.add_path(dirname(__file__))
 Config.set("modules", "telenium_client", "")
 ```
 
-You also need to add `pyjsonrpc` in your dependencies (`pip install pyjsonrpc`)
+You also need to add `python-jsonrpc` in your dependencies (`pip install python-jsonrpc`)
 
 # Connect to a telenium-ready application
 
