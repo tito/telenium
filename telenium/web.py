@@ -576,6 +576,8 @@ def preload_session(filename):
         sys.exit(1)
     if not os.path.exists(filename):
         print("Create new file at {}".format(local_filename))
+        if os.path.exists(SESSION_FN):
+            os.unlink(SESSION_FN)
     else:
         with open(filename) as fd:
             session = json.loads(fd.read())
