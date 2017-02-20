@@ -252,11 +252,10 @@ class TeleniumClient(pyjsonrpc.HttpRequestHandler):
             return True
 
     @pyjsonrpc.rpcmethod
-    @kivythread
     def send_keycode(self, keycodes):
         # very hard to get it right, not fully tested and fail proof.
         # just the basics.
-        from kivy.core.window import Window, Keyboard
+        from kivy.core.window import Keyboard
         keys = keycodes.split("+")
         scancode = 0
         key = None
@@ -274,8 +273,18 @@ class TeleniumClient(pyjsonrpc.HttpRequestHandler):
                 key = Keyboard.keycodes.get(lower_el, 0)
             else:
                 # may fail, so nothing would be done.
-                key = int(el)
-                sym = unichr(key)
+                try:
+                    key = int(el)
+                    sym = unichr(key)
+                except:
+                    traceback.print_exc()
+                    return False
+        self._send_keycode(key, scancode, sym, modifiers)
+        return True
+
+    @kivythread
+    def _send_keycode(self, key, scancode, sym, modifiers):
+        from kivy.core.window import Window
         print("Telenium: send key key={!r} scancode={} sym={!r} modifiers={}".format(
             key, scancode, sym, modifiers
         ))
