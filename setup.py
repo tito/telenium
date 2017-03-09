@@ -44,7 +44,8 @@ setup(
     packages=["telenium", "telenium.mods"],
     entry_points={
         "console_scripts": [
-            "telenium=telenium.web:run"
+            "telenium=telenium.web:run",
+            "telenium-cli=telenium.client:run"
         ]
     },
     install_requires=[

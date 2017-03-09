@@ -1,5 +1,8 @@
-from time import time, sleep
+# coding=utf-8
+
+import argparse
 import pyjsonrpc
+from time import time, sleep
 
 
 class TeleniumHttpClient(pyjsonrpc.HttpClient):
@@ -20,11 +23,17 @@ class TeleniumHttpClient(pyjsonrpc.HttpClient):
             self.click_on(selector)
 
 
-def run_client():
+def run_client(host="localhost", port=9901):
     import code
     import readline
     import rlcompleter
-    cli = TeleniumHttpClient(url="http://localhost:9901/jsonrpc", timeout=5)
+    url = "http://{host}:{port}/jsonrpc".format(host=host, port=port)
+    cli = TeleniumHttpClient(url=url, timeout=5)
+
+    print("Connecting to {}".format(url))
+    while not cli.ping():
+        sleep(.1)
+    print("Connected!")
 
     vars = globals()
     vars.update(locals())
@@ -34,12 +43,15 @@ def run_client():
     shell.interact()
 
 
+def run():
+    parser = argparse.ArgumentParser(description="Telenium Client")
+    parser.add_argument(
+        "host", type=str, default="localhost", help="Telenium Host IP")
+    parser.add_argument(
+        "--port", type=int, default=9901, help="Telenium Host Port")
+    args = parser.parse_args()
+    run_client(host=args.host, port=args.port)
+
+
 if __name__ == "__main__":
-    import sys
-    import subprocess
-    proc = None
-    if len(sys.argv) > 1:
-        executable_name = sys.argv[1]
-        proc = subprocess.Popen(["python", "-m", "telenium.execute",
-                                 executable_name])
-    run_client()
+    run()

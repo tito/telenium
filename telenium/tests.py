@@ -31,13 +31,22 @@ class TeleniumTestCase(unittest.TestCase):
 
     @classmethod
     def start_process(cls):
+        host = os.environ.get("TELENIUM_HOST", "localhost")
+        if "TELENIUM_HOST" in os.environ:
+            url = "http://{}:{}/jsonrpc".format(
+                os.environ.get("TELENIUM_HOST", "localhost"),
+                int(os.environ.get("TELENIUM_PORT", "9901")))
+        else:
+            url = cls.telenium_url
+
         cls.telenium_token = str(uuid4())
-        cls.cli = TeleniumHttpClient(url=cls.telenium_url, timeout=5)
+        cls.cli = TeleniumHttpClient(url=url, timeout=5)
 
         # prior test, close any possible previous telenium application
         # to ensure this one might be executed correctly.
         try:
             cls.cli.app_quit()
+            sleep(2)
         except:
             pass
 
@@ -49,8 +58,10 @@ class TeleniumTestCase(unittest.TestCase):
         cmd = cls.cmd_process + cls.cmd_entrypoint
 
         # start the application
-        cwd = os.path.dirname(cls.cmd_entrypoint[0])
-        cls.process = subprocess.Popen(cmd, env=env, cwd=cwd)
+        if os.environ.get("TELENIUM_TARGET", None) == "android":
+            cls.start_android_process(env=env)
+        else:
+            cls.start_desktop_process(cmd=cmd, env=env)
 
         # wait for telenium server to be online
         start = time()
@@ -67,6 +78,35 @@ class TeleniumTestCase(unittest.TestCase):
         # launched here
         if cls.cli.get_token() != cls.telenium_token:
             raise Exception("Connected to another telenium server")
+
+    @classmethod
+    def start_desktop_process(cls, cmd, env):
+        cwd = os.path.dirname(cls.cmd_entrypoint[0])
+        cls.process = subprocess.Popen(cmd, env=env, cwd=cwd)
+
+    @classmethod
+    def start_android_process(cls, env):
+        import subprocess
+        import json
+        package = os.environ.get("TELENIUM_ANDROID_PACKAGE", None)
+        entry = os.environ.get("TELENIUM_ANDROID_ENTRY",
+                               "org.kivy.android.PythonActivity")
+        telenium_env = cls.cmd_env.copy()
+        telenium_env["TELENIUM_TOKEN"] = env["TELENIUM_TOKEN"]
+        cmd = [
+            "adb", "shell", "am", "start", "-n",
+            "{}/{}".format(package, entry), "-a", entry
+        ]
+
+        filename = "/tmp/telenium_env.json"
+        with open(filename, "w") as fd:
+            fd.write(json.dumps(telenium_env))
+        cmd_env = ["adb", "push", filename, "/sdcard/telenium_env.json"]
+        print("Execute: {}".format(cmd_env))
+        subprocess.Popen(cmd_env).communicate()
+        print("Execute: {}".format(cmd))
+        cls.process = subprocess.Popen(cmd)
+        print cls.process.communicate()
 
     @classmethod
     def stop_process(cls):
@@ -87,7 +127,8 @@ class TeleniumTestCase(unittest.TestCase):
 
     def setUp(self):
         if not TeleniumTestCase._telenium_init:
-            self.init()
+            if hasattr(self, "init"):
+                self.init()
             TeleniumTestCase._telenium_init = True
 
     def assertExists(self, selector, timeout=-1):

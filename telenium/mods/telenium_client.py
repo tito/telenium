@@ -8,6 +8,7 @@ from kivy.app import App
 from kivy.clock import Clock
 import threading
 import pyjsonrpc
+import traceback
 from telenium.xpath import XpathParser
 from kivy.input.motionevent import MotionEvent
 from kivy.input.provider import MotionEventProvider
@@ -202,7 +203,6 @@ class TeleniumClient(pyjsonrpc.HttpRequestHandler):
         try:
             exec cmd in idmap, idmap
         except:
-            import traceback
             traceback.print_exc()
             return False
         return True
@@ -302,9 +302,9 @@ def register_input_provider():
 
 
 def run_telenium():
-    Logger.info("TeleniumClient: Started at localhost:9901")
+    Logger.info("TeleniumClient: Started at 0.0.0.0:9901")
     register_input_provider()
-    client = pyjsonrpc.ThreadingHttpServer(server_address=("localhost", 9901),
+    client = pyjsonrpc.ThreadingHttpServer(server_address=("0.0.0.0", 9901),
                                            RequestHandlerClass=TeleniumClient)
     client.serve_forever()
 
