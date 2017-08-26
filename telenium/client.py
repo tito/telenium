@@ -59,6 +59,13 @@ class TeleniumHttpClient(object):
         if self.wait(selector, timeout=timeout):
             self.click_on(selector)
 
+    def wait_drag(self, selector, target, duration, timeout):
+        if (
+            self.wait(selector, timeout=timeout) and
+            self.wait(target, timeout=timeout)
+        ):
+            self.drag(selector, target, duration)
+
     def __getattr__(self, attr):
         return TeleniumHttpClientMethod(self, attr)
 

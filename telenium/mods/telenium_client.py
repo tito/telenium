@@ -18,6 +18,7 @@ from kivy.input.motionevent import MotionEvent
 from kivy.input.provider import MotionEventProvider
 from kivy.compat import unichr
 from itertools import count
+from time import time
 
 nextid = count()
 telenium_input = None
@@ -257,6 +258,50 @@ def rpc_click_on(selector):
         return True
 
 
+@kivythread
+def rpc_drag(selector, target, duration):
+    from kivy.base import EventLoop
+    w1 = selectFirst(selector)
+    w2 = selectFirst(target)
+    duration = float(duration)
+    if w1 and w2:
+        from kivy.core.window import Window
+        cx1, cy1 = w1.to_window(w1.center_x, w1.center_y)
+        sx1 = cx1 / float(Window.width)
+        sy1 = cy1 / float(Window.height)
+
+        me = TeleniumMotionEvent("telenium",
+                                 id=next(nextid),
+                                 args=[sx1, sy1])
+
+        telenium_input.events.append(("begin", me))
+        if not duration:
+            telenium_input.events.append(("end", me))
+
+        else:
+            d = 0
+            while d < duration:
+                t = time()
+                EventLoop.idle()
+                dt = time() - t
+                # need to compute that ever frame, it could have moved
+                cx2, cy2 = w2.to_window(w2.center_x, w2.center_y)
+                sx2 = cx2 / float(Window.width)
+                sy2 = cy2 / float(Window.height)
+
+                dsx = dt * (sx2 - me.sx) / (duration - d)
+                dsy = dt * (sy2 - me.sy) / (duration - d)
+
+                me.sx += dsx
+                me.sy += dsy
+
+                telenium_input.events.append(("update", me))
+                d += dt
+
+        telenium_input.events.append(("end", me))
+        return True
+
+
 def rpc_send_keycode(keycodes):
     # very hard to get it right, not fully tested and fail proof.
     # just the basics.
@@ -338,6 +383,7 @@ def run_telenium():
     dispatcher.add_method(rpc_execute, "execute")
     dispatcher.add_method(rpc_pick, "pick")
     dispatcher.add_method(rpc_click_on, "click_on")
+    dispatcher.add_method(rpc_drag, "drag")
     dispatcher.add_method(rpc_send_keycode, "send_keycode")
 
     run_simple("0.0.0.0", 9901, application)
