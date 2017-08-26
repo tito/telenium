@@ -413,8 +413,10 @@ class ApiWebSocket(WebSocket):
 
         # prepare the application
         entrypoint = self.session["settings"]["entrypoint"]
-        cmd = ["python", "-m", "telenium.execute", entrypoint]
+        cmd = [sys.executable, "-m", "telenium.execute", entrypoint]
         cwd = dirname(entrypoint)
+        if not os.path.isabs(cwd):
+            cwd = os.getcwd()
         env = os.environ.copy()
         env.update(self.session["env"])
         env["TELENIUM_TOKEN"] = telenium_token
