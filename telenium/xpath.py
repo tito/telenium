@@ -225,8 +225,8 @@ BoxLayout:
         text: "World"
     """)
     parser = XpathParser()
-    print parser.parse("//BoxLayout/TextInput").execute(root)
-    print parser.parse("//TextInput").execute(root)
+    print(parser.parse("//BoxLayout/TextInput").execute(root))
+    print(parser.parse("//TextInput").execute(root))
     p = parser.parse("//BoxLayout/Button[@text=\"World\"]")
-    print p
-    print p.execute(root)
+    print(p)
+    print(p.execute(root))

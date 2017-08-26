@@ -206,7 +206,7 @@ def rpc_execute(cmd):
     app = App.get_running_app()
     idmap = {"app": app}
     try:
-        exec cmd in idmap, idmap
+        exec(cmd, idmap, idmap)
     except:
         traceback.print_exc()
         return False
