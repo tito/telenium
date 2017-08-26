@@ -50,9 +50,10 @@ setup(
     },
     install_requires=[
         "Mako>=1.0.6",
-        "CherryPy==8.5.0",  # recent cherrypy are incompatible with ws4py
-        "ws4py>=0.3.5",
-        "python-jsonrpc>=0.10.0"
+        "CherryPy>=10.2.1",
+        "ws4py>=0.4.2",
+        "json-rpc>=1.10.3",
+        "Werkzeug>=0.12.2"
     ],
     include_package_data=True,
     zip_safe=False,
