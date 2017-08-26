@@ -9,7 +9,7 @@ Telenium provide a framework to remote tests or control Kivy-based application:
 - `unittests` support
 - Integrate as a Kivy modules
 - Web IDE
-- Python 2 (python-jsonrpc not compatible with Python 3 yet, working on it.)
+- Python 2 and 3 (since version 0.4, using json-rpc)
 
 ![Telenium IDE](https://cloud.githubusercontent.com/assets/37904/22790912/f44b8166-eee7-11e6-9a78-120f78bde220.png)
 
