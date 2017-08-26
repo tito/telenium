@@ -1,11 +1,48 @@
 # coding=utf-8
 
 import argparse
-import pyjsonrpc
+import requests
+import json
 from time import time, sleep
 
 
-class TeleniumHttpClient(pyjsonrpc.HttpClient):
+class TeleniumHttpException(Exception):
+    pass
+
+
+class TeleniumHttpClientMethod(object):
+    _id = 0
+    def __init__(self, client, method):
+        self.client = client
+        self.method = method
+        super(TeleniumHttpClientMethod, self).__init__()
+
+    def __call__(self, *args):
+        TeleniumHttpClientMethod._id += 1
+        _id = TeleniumHttpClientMethod._id
+        payload = {
+            "method": self.method,
+            "params": args,
+            "jsonrpc": "2.0",
+            "id": _id
+        }
+        headers = {"Content-Type": "application/json"}
+        response = requests.post(
+            self.client.url, data=json.dumps(payload),
+            headers=headers).json()
+        assert(response["jsonrpc"])
+        try:
+            return response["result"]
+        except:
+            raise TeleniumHttpException(response["error"]["message"])
+
+
+class TeleniumHttpClient(object):
+    def __init__(self, url, timeout):
+        self.url = url
+        self.timeout = timeout
+        super(TeleniumHttpClient, self).__init__()
+
     def wait(self, selector, timeout=-1):
         start = time()
         while True:
@@ -21,6 +58,9 @@ class TeleniumHttpClient(pyjsonrpc.HttpClient):
     def wait_click(self, selector, timeout=-1):
         if self.wait(selector, timeout=timeout):
             self.click_on(selector)
+
+    def __getattr__(self, attr):
+        return TeleniumHttpClientMethod(self, attr)
 
 
 def run_client(host="localhost", port=9901):
