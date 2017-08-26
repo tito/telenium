@@ -71,7 +71,7 @@ You also need to add `python-jsonrpc` in your dependencies (`pip install python-
 We have a command line client to play with. After the application is started,
 you can connect with::
 
-    $ python -m telenium.client
+    $ python -m telenium.client localhost
 
 Then play with it. `cli` is the telenium client where you can invoke remote
 commands. See the `Telenium commands` to see what you can do:
