@@ -148,7 +148,17 @@ class UITestCase(TeleniumTestCase):
 
 # Telenium commands
 
-## `select(selector)`
+## `version()` (API v1)
+
+Return the current API version. You can use it to know which methods are
+available.
+
+```python
+>>> cli.version()
+1
+```
+
+## `select(selector)`  (API v1)
 
 Return unique selectors for all widgets that matches the `selector`.
 
@@ -157,16 +167,16 @@ Return unique selectors for all widgets that matches the `selector`.
 [u"/WindowSDL/GridLayout/Label[0]", u"/WindowSDL/GridLayout/Label[1]"]
 ```
 
-## `getattr(selector, key)`
+## `getattr(selector, key)`  (API v1)
 
 Return the value of an attribute on the first widget found by the `selector`.
 
 ```python
->>> cli.getattr("//Label")
+>>> cli.getattr("//Label", "text")
 u"Hello world"
 ```
 
-## `setattr(selector, key, value)`
+## `setattr(selector, key, value)`  (API v1)
 
 Set an attribute named by `key` to `value` for all widgets that matches the
 `selector`.
@@ -176,7 +186,7 @@ Set an attribute named by `key` to `value` for all widgets that matches the
 True
 ```
 
-## `element(selector)`
+## `element(selector)`  (API v1)
 
 Return `True` if at least one widget match the `selector`.
 
@@ -187,7 +197,7 @@ True
 False
 ```
 
-## `execute(code)`
+## `execute(code)`  (API v1)
 
 Execute python code in the application. Only the "app" symbol that point to the
 current running application is available. Return True if the code executed, or
@@ -198,7 +208,7 @@ False if the code failed. Exception will be print withing the application logs.
 True
 ```
 
-## `pick(all=False)`
+## `pick(all=False)` (API v1)
 
 Return either the first widget selector you touch on the screen (`all=False`,
 the default), either it return the list of all the wigdets that are traversed
@@ -211,7 +221,7 @@ u'/WindowSDL/Button[0]'
 [u'/WindowSDL/Button[0]',u'/WindowSDL']
 ```
 
-## `click_on(selector)`
+## `click_on(selector)` (API v1)
 
 Simulate a touch down/up on the first widget that match the `selector`. Return
 True if it worked.
