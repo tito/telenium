@@ -142,7 +142,7 @@ def rpc_app_ready():
 
 def rpc_select(selector, with_bounds=False):
     if not with_bounds:
-        return map(path_to, selectAll(selector))
+        return list(map(path_to, selectAll(selector)))
 
     results = []
     for widget in selectAll(selector):
@@ -235,7 +235,7 @@ def rpc_pick(all=False):
     Window.on_touch_down = orig_on_touch_down
     if widgets:
         if all:
-            ret = map(path_to, widgets)
+            ret = list(map(path_to, widgets))
         else:
             ret = path_to(widgets[0])
         return ret
