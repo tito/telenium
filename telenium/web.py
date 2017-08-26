@@ -191,7 +191,7 @@ class ApiWebSocket(WebSocket):
         if local_filename:
             self.send_object(["is_local", True])
         self.send_object(["settings", self.session["settings"]])
-        self.send_object(["env", self.session["env"].items()])
+        self.send_object(["env", dict(self.session["env"].items())])
         tests = [{
             "name": x["name"],
             "id": x["id"]
