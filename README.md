@@ -114,6 +114,8 @@ Example:
 from telenium.tests import TeleniumTestCase
 
 class UITestCase(TeleniumTestCase):
+    cmd_entrypoint = ["main.py"]
+
     def test_export_csv(self):
         self.cli.wait_click("//SaveButton")
         self.cli.wait_click("//CascadeSaveButton")
