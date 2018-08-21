@@ -482,6 +482,10 @@ class ApiWebSocket(WebSocket):
         elif cmd == "wait_click":
             self.cli.wait_click(selector, timeout=timeout)
             return True
+        elif cmd == "wait_drag":
+            self.cli.wait_drag(
+                selector, target=arg1, duration=arg2, timeout=timeout)
+            return True
         elif cmd == "assertExists":
             return self.cli.wait(selector, timeout=timeout) is True
         elif cmd == "assertNotExists":
