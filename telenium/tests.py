@@ -1,4 +1,5 @@
 # coding=utf-8
+from __future__ import print_function
 
 import unittest
 import subprocess
@@ -106,7 +107,7 @@ class TeleniumTestCase(unittest.TestCase):
         subprocess.Popen(cmd_env).communicate()
         print("Execute: {}".format(cmd))
         cls.process = subprocess.Popen(cmd)
-        print cls.process.communicate()
+        print(cls.process.communicate())
 
     @classmethod
     def stop_process(cls):
