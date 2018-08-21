@@ -206,9 +206,10 @@ def rpc_element(selector):
 def rpc_execute(cmd):
     app = App.get_running_app()
     idmap = {"app": app}
+    print("execute", cmd)
     try:
         exec(cmd, idmap, idmap)
-    except:
+    except Exception:
         traceback.print_exc()
         return False
     return True

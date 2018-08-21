@@ -289,7 +289,7 @@ class ApiWebSocket(WebSocket):
     def cmd_pick(self, options):
         if not self.cli:
             return self.send_object(["pick", "error", "App is not started"])
-        objs = self.cli.pick(all=True)
+        objs = self.cli.pick(True)
         return self.send_object(["pick", "success", objs])
 
     @threaded
@@ -502,6 +502,8 @@ class ApiWebSocket(WebSocket):
         elif cmd == "sleep":
             sleep(float(selector))
             return True
+        elif cmd == "executeCode":
+            return self.cli.execute(selector)
 
     def assertNotExists(self, cli, selector, timeout=-1):
         start = time()
