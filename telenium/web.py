@@ -79,6 +79,8 @@ class ${settings["project"]|camelcase}TestCase(TeleniumTestCase):
         ${vself}.cli.send_keycode('${value}')
         % elif key == "sleep":
         time.sleep(${value})
+        % elif key == "executeCode":
+        ${vself}.assertTrue(self.cli.execute('${value}'))
         % endif
         % endfor
     % endfor
