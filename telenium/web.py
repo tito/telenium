@@ -11,6 +11,7 @@ import subprocess
 import traceback
 import webbrowser
 import argparse
+import shlex
 from mako.template import Template
 from uuid import uuid4
 import telenium
@@ -119,7 +120,8 @@ class ApiWebSocket(WebSocket):
             "project": "Test",
             "entrypoint": "main.py",
             "application-timeout": "10",
-            "command-timeout": "5"
+            "command-timeout": "5",
+            "args": ""
         },
         "env": {},
         "tests": [{
@@ -415,7 +417,9 @@ class ApiWebSocket(WebSocket):
 
         # prepare the application
         entrypoint = self.session["settings"]["entrypoint"]
-        cmd = [sys.executable, "-m", "telenium.execute", entrypoint]
+        print(self.session)
+        args = shlex.split(self.session["settings"].get("args", ""))
+        cmd = [sys.executable, "-m", "telenium.execute", entrypoint] + args
         cwd = dirname(entrypoint)
         if not os.path.isabs(cwd):
             cwd = os.getcwd()
