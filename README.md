@@ -1,5 +1,7 @@
 # Telenium
 
+!! Telenium is going to be moved/rewriten for [NCIS](https://github.com/kivy/ncis). NCIS is under development.
+
 Telenium provide a framework to remote tests or control Kivy-based application:
 
 - Selector support using XPATH-like syntax (`//BoxLayout[0]/Button[@text~="Close"]`)
