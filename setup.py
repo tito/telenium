@@ -40,6 +40,7 @@ setup(
     author_email="mat@meltingrocks.com",
     description=("Kivy automation, can be used to do GUI tests."),
     long_description=long_description,
+    long_description_content_type="text/markdown",
     keywords=["kivy", "automate", "unittest", "wait", "condition"],
     packages=["telenium", "telenium.mods"],
     entry_points={
