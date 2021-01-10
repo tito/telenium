@@ -1,6 +1,6 @@
 # coding=utf-8
 
-VERSION = 1
+VERSION = 2
 
 import sys
 import os
@@ -202,10 +202,12 @@ def rpc_element(selector):
         return True
 
 
+idmap = {}
+
 @kivythread
 def rpc_execute(cmd):
     app = App.get_running_app()
-    idmap = {"app": app}
+    idmap["app"] = app
     print("execute", cmd)
     try:
         exec(cmd, idmap, idmap)
@@ -213,6 +215,42 @@ def rpc_execute(cmd):
         traceback.print_exc()
         return False
     return True
+
+
+def rpc_evaluate(cmd):
+    ev = threading.Event()
+    result = []
+    _rpc_evaluate(cmd, ev, result)
+    ev.wait()
+    return result[0]
+
+
+@kivythread
+def _rpc_evaluate(cmd, ev, result):
+    app = App.get_running_app()
+    idmap["app"] = app
+    res = None
+    try:
+        res = eval(cmd, idmap, idmap)
+        result.append(res)
+    finally:
+        if not result:
+            result.append(None)
+        ev.set()
+
+
+def rpc_evaluate_and_store(key, cmd):
+    ev = threading.Event()
+    result = []
+    _rpc_evaluate(cmd, ev, result)
+    ev.wait()
+    idmap[key] = result[0]
+    return True
+
+
+def rpc_select_and_store(key, selector):
+    idmap[key] = result = selectFirst(selector)
+    return result is not None
 
 
 def rpc_pick(all=False):
@@ -346,6 +384,34 @@ def _send_keycode(key, scancode, sym, modifiers):
     return True
 
 
+def rpc_screenshot():
+    ev = threading.Event()
+    result = []
+    _rpc_screenshot(ev, result)
+    ev.wait()
+    return result[0]
+
+
+@kivythread
+def _rpc_screenshot(ev, result):
+    import base64
+    filename = None
+    data = None
+    try:
+        from kivy.core.window import Window
+        filename = Window.screenshot()
+        with open(filename, "rb") as fd:
+            data = fd.read()
+        os.unlink(filename)
+        return True
+    finally:
+        result.append({
+            "filename": filename,
+            "data": base64.b64encode(data).decode("utf-8")
+        })
+        ev.set()
+
+
 def register_input_provider():
     global telenium_input
     telenium_input = TeleniumInputProvider("telenium", None)
@@ -382,12 +448,22 @@ def run_telenium():
     dispatcher.add_method(rpc_setattr, "setattr")
     dispatcher.add_method(rpc_element, "element")
     dispatcher.add_method(rpc_execute, "execute")
+    dispatcher.add_method(rpc_evaluate, "evaluate")
+    dispatcher.add_method(rpc_evaluate_and_store, "evaluate_and_store")
+    dispatcher.add_method(rpc_select_and_store, "select_and_store")
     dispatcher.add_method(rpc_pick, "pick")
     dispatcher.add_method(rpc_click_on, "click_on")
     dispatcher.add_method(rpc_drag, "drag")
     dispatcher.add_method(rpc_send_keycode, "send_keycode")
+    dispatcher.add_method(rpc_screenshot, "screenshot")
 
     run_simple("0.0.0.0", 9901, application)
+
+
+def install():
+    thread = threading.Thread(target=run_telenium)
+    thread.daemon = True
+    thread.start()
 
 
 def start(win, ctx):

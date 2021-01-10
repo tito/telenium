@@ -27,6 +27,7 @@ class TeleniumHttpClientMethod(object):
             "id": _id
         }
         headers = {"Content-Type": "application/json"}
+        print(f"> {self.method}: {args}")
         response = requests.post(
             self.client.url, data=json.dumps(payload),
             headers=headers).json()
@@ -65,6 +66,25 @@ class TeleniumHttpClient(object):
             self.wait(target, timeout=timeout)
         ):
             self.drag(selector, target, duration)
+
+    def screenshot(self, filename=None):
+        import base64
+        ret = TeleniumHttpClientMethod(self, "screenshot")()
+        if ret:
+            ret["data"] = base64.b64decode(ret["data"].encode("utf-8"))
+            if filename:
+                ret["filename"] = filename
+                with open(filename, "wb") as fd:
+                    fd.write(ret["data"])
+        return ret
+
+    def execute(self, code):
+        from textwrap import dedent
+        return TeleniumHttpClientMethod(self, "execute")(dedent(code))
+
+    def sleep(self, seconds):
+        print(f"> sleep {seconds} seconds")
+        sleep(seconds)
 
     def __getattr__(self, attr):
         return TeleniumHttpClientMethod(self, attr)

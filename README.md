@@ -1,8 +1,6 @@
 # Telenium
 
-!! Telenium is going to be moved/rewriten for [NCIS](https://github.com/kivy/ncis). NCIS is under development.
-
-Telenium provide a framework to remote tests or control Kivy-based application:
+Telenium provide a framework to remote tests or automation Kivy-based application:
 
 - Selector support using XPATH-like syntax (`//BoxLayout[0]/Button[@text~="Close"]`)
 - Create selector by touching the UI
@@ -53,7 +51,23 @@ Just do:
 python -m telenium.execute main.py
 ```
 
-## Method 2: Add telenium_client as a Kivy modules into your application
+## Method 2: Import and install telenium client in your application
+
+Telenium client can be imported and installed at the start of your application:
+
+If telenium is fully available:
+```python
+from telenium import install
+install()
+```
+
+If you only included `telenium_client.py` module:
+```python
+from telenium_client import install
+install()
+```
+
+## Method 3: Add telenium_client as a Kivy modules into your application
 
 Just copy/paste `mods/telenium_client.py` in your application, then before
 running your application, initialize it:
@@ -67,6 +81,24 @@ Config.set("modules", "telenium_client", "")
 ```
 
 You also need to add `python-jsonrpc` in your dependencies (`pip install python-jsonrpc`)
+
+# Remote automation
+
+You can easily create a script that will connect to your telenium client, and do stuff.
+
+```python
+import telenium
+cli = telenium.connect()
+
+# wait until the SaveCSVButton instance is in the widget tree.
+cli.wait_click("//SaveCSVButton")
+# wait that one label have Export to CSV text
+cli.wait("//Label[@text~=\"Export to CSV\"]", timeout=2)
+# make a screenshot !
+result = cli.screenshot()
+print(result["filename"])
+print(result["data"])
+```
 
 # Connect to a telenium-ready application
 
@@ -152,7 +184,7 @@ class UITestCase(TeleniumTestCase):
 
 # Telenium commands
 
-## `version()` (API v1)
+## `version()`
 
 Return the current API version. You can use it to know which methods are
 available.
@@ -162,7 +194,7 @@ available.
 1
 ```
 
-## `select(selector)`  (API v1)
+## `select(selector)`
 
 Return unique selectors for all widgets that matches the `selector`.
 
@@ -171,7 +203,7 @@ Return unique selectors for all widgets that matches the `selector`.
 [u"/WindowSDL/GridLayout/Label[0]", u"/WindowSDL/GridLayout/Label[1]"]
 ```
 
-## `getattr(selector, key)`  (API v1)
+## `getattr(selector, key)`
 
 Return the value of an attribute on the first widget found by the `selector`.
 
@@ -180,7 +212,7 @@ Return the value of an attribute on the first widget found by the `selector`.
 u"Hello world"
 ```
 
-## `setattr(selector, key, value)`  (API v1)
+## `setattr(selector, key, value)`
 
 Set an attribute named by `key` to `value` for all widgets that matches the
 `selector`.
@@ -190,7 +222,7 @@ Set an attribute named by `key` to `value` for all widgets that matches the
 True
 ```
 
-## `element(selector)`  (API v1)
+## `element(selector)`
 
 Return `True` if at least one widget match the `selector`.
 
@@ -201,7 +233,7 @@ True
 False
 ```
 
-## `execute(code)`  (API v1)
+## `execute(code)`
 
 Execute python code in the application. Only the "app" symbol that point to the
 current running application is available. Return True if the code executed, or
@@ -212,7 +244,7 @@ False if the code failed. Exception will be print withing the application logs.
 True
 ```
 
-## `pick(all=False)` (API v1)
+## `pick(all=False)`
 
 Return either the first widget selector you touch on the screen (`all=False`,
 the default), either it return the list of all the wigdets that are traversed
@@ -225,7 +257,7 @@ u'/WindowSDL/Button[0]'
 [u'/WindowSDL/Button[0]',u'/WindowSDL']
 ```
 
-## `click_on(selector)` (API v1)
+## `click_on(selector)`
 
 Simulate a touch down/up on the first widget that match the `selector`. Return
 True if it worked.
@@ -234,6 +266,47 @@ True if it worked.
 >>> cli.click_on("//Button[0]")
 True
 ```
+
+## `screenshot(filename=None)` (>= 0.5.0)
+
+Take a screenshot of the current application in a PNG format.
+Data will be saved into filename if passed, or you can have data in the result.
+
+```python
+>>> cli.screenshot("hello.png")
+{"filename": "hello.png", "data": "base64 utf-8 encoded data..."}
+```
+
+## `evaluate(expr)` (>= 0.5.0)
+
+Evaluate an expression, and return the result. Only serializable result can be
+fetched, if an object is sent back, you'll receive None.
+
+```python
+>>> cli.evaluate("len(app.my_list)")
+123
+```
+
+## `evaluate_and_store(key, expr)` (>= 0.5.0)
+
+Evaluate an expression, and store the result in a id-map, used by `execute` and `evaluate` method.
+
+```python
+>>> cli.evaluate_and_store("root", "app.root.children[0]")
+True
+>>> cli.execute("root.do_something()")
+```
+
+## `select_and_store(key, selector)` (>= 0.5.0)
+
+Select the first widget returned by a selector, and store the result in a id-map, used by `execute` and `evaluate` method.
+
+```python
+>>> cli.select_and_store("btn", "//Button[@title~='Login']")
+True
+>>> cli.execute("btn.disabled = True")
+```
+
 
 # Telenium selector syntax (XPATH)
 
@@ -271,4 +344,48 @@ Some examples:
 
 # Select the button that contain "Close"
 //BoxLayout[0]//Button[@text~="Close"]
+```
+
+# Real life examples
+
+## Automate screenshots of an app
+
+I was having an app where content is displayed randomly. But the client want to review all the texts and position of every content. Easy peasy::
+
+```python
+from telenium import connect
+prefix = "screenshots/myapp-"
+
+cli = connect()
+cli.wait("//MyAppContainer")
+cli.select_and_store("root", "//MyAppContainer")
+
+animals_count = cli.evaluate("len(root.animals)")
+for index in range(animals_count):
+    # get one animal
+    cli.evaluate_and_store("animal", f"root.animals[{index}]")
+    animal_id = cli.evaluate("animal['id']")
+    animal_name = cli.evaluate("animal['title_en']")
+    # focus the animal
+    cli.execute("root.focus_animal(animal)")
+    cli.sleep(3)
+    # take a screenshot
+    cli.screenshot(f"{prefix}{animal_id}-{animal_name}.png")
+    cli.sleep(3)
+```
+
+## Automate login and go directly to the right screen
+
+If you code, close your app, restart, login, do many action before reaching the screen you are currently working on, you could automate the first part.
+
+```python
+from telenium import connect
+cli = connect()
+cli.wait('//IntroUI')
+cli.execute("app.username = 'username'")
+cli.execute("app.userpwd = 'fake'")
+cli.click_on('//LoginButton')
+cli.wait('//IntroUI')
+cli.click_on('//StartButton')
+cli.wait('//GameUI')
 ```
