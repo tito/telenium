@@ -35,7 +35,7 @@ setup(
     name="telenium",
     version=find_version("telenium", "__init__.py"),
     url="http://github.com/tito/telenium",
-    license="MIT",
+    license="MIT License",
     author="Mathieu Virbel",
     author_email="mat@meltingrocks.com",
     description=("Kivy automation, can be used to do GUI tests."),
