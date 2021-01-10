@@ -12,3 +12,4 @@
 session.dat
 build
 dist
+.vscode/settings.json
