@@ -27,15 +27,33 @@ class TeleniumHttpClientMethod(object):
             "id": _id
         }
         headers = {"Content-Type": "application/json"}
+        response = None
+        response_json = None
+
         print(f"> {self.method}: {args}")
-        response = requests.post(
-            self.client.url, data=json.dumps(payload),
-            headers=headers).json()
-        assert(response["jsonrpc"])
+
         try:
-            return response["result"]
+            response = requests.post(
+                self.client.url, data=json.dumps(payload),
+                headers=headers)
+
+            if response.headers.get('content-type') == 'application/json':
+                response_json = response.json()
+
+        except requests.exceptions.ConnectionError:
+            # Closing the app, unsurprisingly, often causes a disconnection
+            if self.method != 'app_quit':
+                raise
+
         except:
-            raise TeleniumHttpException(response["error"]["message"])
+            if response and response.headers.get(
+                    'content-type') == 'application/json':
+                raise TeleniumHttpException(
+                    response.json()["error"]["message"])
+            raise
+
+        # The JSON response doesn't always contain a "result" value.
+        return response_json.get('result', None) if response_json else None
 
 
 class TeleniumHttpClient(object):
