@@ -82,7 +82,7 @@ class TeleniumTestCase(unittest.TestCase):
 
     @classmethod
     def start_desktop_process(cls, cmd, env):
-        cwd = os.path.dirname(cls.cmd_entrypoint[0])
+        cwd = os.path.dirname(os.path.abspath(cls.cmd_entrypoint[0]))
         cls.process = subprocess.Popen(cmd, env=env, cwd=cwd)
 
     @classmethod
