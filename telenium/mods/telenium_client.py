@@ -7,6 +7,7 @@ import os
 import re
 import threading
 import traceback
+import json
 from kivy.logger import Logger
 from kivy.app import App
 from kivy.clock import Clock
@@ -17,6 +18,7 @@ from telenium.xpath import XpathParser
 from kivy.input.motionevent import MotionEvent
 from kivy.input.provider import MotionEventProvider
 from kivy.compat import unichr
+from kivy.utils import platform
 from itertools import count
 from time import time
 
@@ -419,6 +421,25 @@ def register_input_provider():
     EventLoop.add_input_provider(telenium_input)
 
 
+def load_android_env_var_file():
+    """
+    When using a TeleniumTestCase is to launch an app on an android device,
+    environment variables need to be set (even if no additional ones are
+    specified by the user).  Unfortunately, adb doesn't seem to allow setting
+    environment variables in any straight-forward manner.  Instead,
+    TeleniumTestCase provides the key-value pairs needed in the form of a file
+    (/sdcard/telenium_env.json) to be handled by the remote telenium client.
+    Said file is deleted once loaded. Note that this implies that your app is
+    going to need the right permissions to access your storage.
+    """
+    file_path = '/sdcard/telenium_env.json'
+    if platform == 'android' and os.path.exists(file_path):
+        with open(file_path, 'r') as filestream:
+            file_contents = json.load(filestream)
+            os.environ.update(file_contents)
+        os.remove(file_path)
+
+
 @Request.application
 def application(request):
     print("application request", request.data)
@@ -435,6 +456,7 @@ def application(request):
 
 def run_telenium():
     Logger.info("TeleniumClient: Started at 0.0.0.0:9901")
+    load_android_env_var_file()
     register_input_provider()
 
     dispatcher.add_method(rpc_version, "version")
