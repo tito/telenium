@@ -442,14 +442,10 @@ def load_android_env_var_file():
 
 @Request.application
 def application(request):
-    print("application request", request.data)
     try:
         response = JSONRPCResponseManager.handle(
             request.data, dispatcher)
-        print("application response", response)
-        print("application response", response.json)
     except Exception as e:
-        print("application exception", e)
         raise
     return Response(response.json, mimetype='application/json')
 
