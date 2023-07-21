@@ -111,9 +111,11 @@ def path_to(widget):
     root = Window
     if widget.parent is root or widget.parent == widget or not widget.parent:
         return "/{}".format(widget.__class__.__name__)
+    filtered_children = [child for child in widget.parent.children if type(child) == type(widget)]
+    filtered_children.reverse()
     return "{}/{}[{}]".format(
         path_to(widget.parent), widget.__class__.__name__,
-        widget.parent.children.index(widget))
+        filtered_children.index(widget))
 
 
 def rpc_ping():
